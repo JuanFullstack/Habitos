@@ -53,6 +53,29 @@ export const useBienestarData = () => {
     loadData();
   }, []);
 
+  // --- FETCH ON DEMAND (When selecting a date not in cache) ---
+  useEffect(() => {
+    if (timeRange === 'DÍA' && !db[currentDate] && !isSyncing) {
+      const fetchDate = async () => {
+        try {
+          const record = await pb.collection(COLLECTIONS.DAILY_LOGS).getFirstListItem(`date="${currentDate}"`);
+          if (record) {
+            setDb(prev => {
+              const newDb = { ...prev, [currentDate]: record.content };
+              // Update local storage to cache it
+              localStorage.setItem('bienestarDB', JSON.stringify(newDb));
+              return newDb;
+            });
+          }
+        } catch (e: any) {
+          // 404 is expected for new days
+          if (e.status !== 404) console.warn("Error fetching day:", e);
+        }
+      };
+      fetchDate();
+    }
+  }, [currentDate, timeRange, db, isSyncing]);
+
   const getEditableDay = (): IDayData => {
     const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
     return db[targetDate] || JSON.parse(JSON.stringify(INITIAL_DAY_DATA));
