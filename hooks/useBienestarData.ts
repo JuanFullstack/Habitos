@@ -19,43 +19,46 @@ export const useBienestarData = () => {
   const [currentDate, setCurrentDate] = useState(getTodayStr());
   const [timeRange, setTimeRange] = useState<TimeRange>('HOY');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
+
+  // --- HELPER: LOAD DATA ---
+  const loadDataFromCloud = async () => {
+    try {
+      setIsSyncing(true);
+      // Load last 50 days
+      const records = await pb.collection(COLLECTIONS.DAILY_LOGS).getList(1, 50, {
+        sort: '-date',
+        requestKey: null
+      });
+
+      if (records.items.length > 0) {
+        const cloudDB: Database = {};
+        records.items.forEach((rec: any) => {
+          cloudDB[rec.date] = rec.content;
+        });
+
+        // Merge with local (Cloud wins)
+        setDb(prev => {
+          const merged = { ...prev, ...cloudDB };
+          localStorage.setItem('bienestarDB', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    } catch (err) {
+      console.error("Offline or Error loading from DB:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // --- INITIAL LOAD FROM POCKETBASE ---
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsSyncing(true);
-        // Load last 50 days
-        const records = await pb.collection(COLLECTIONS.DAILY_LOGS).getList(1, 50, {
-          sort: '-date',
-          requestKey: null
-        });
-
-        if (records.items.length > 0) {
-          const cloudDB: Database = {};
-          records.items.forEach((rec: any) => {
-            cloudDB[rec.date] = rec.content;
-          });
-
-          // Merge with local (Cloud wins on conflict for simplicity in this version)
-          setDb(prev => {
-            const merged = { ...prev, ...cloudDB };
-            localStorage.setItem('bienestarDB', JSON.stringify(merged));
-            return merged;
-          });
-        }
-      } catch (err) {
-        console.error("Offline or Error loading from DB:", err);
-      } finally {
-        setIsSyncing(false);
-      }
-    };
-    loadData();
+    if (!isSimulationMode) loadDataFromCloud();
   }, []);
 
   // --- FETCH ON DEMAND (When selecting a date not in cache) ---
   useEffect(() => {
-    if (timeRange === 'DÍA' && !db[currentDate] && !isSyncing) {
+    if (timeRange === 'DÍA' && !db[currentDate] && !isSyncing && !isSimulationMode) {
       const fetchDate = async () => {
         try {
           const record = await pb.collection(COLLECTIONS.DAILY_LOGS).getFirstListItem(`date="${currentDate}"`);
@@ -74,7 +77,7 @@ export const useBienestarData = () => {
       };
       fetchDate();
     }
-  }, [currentDate, timeRange, db, isSyncing]);
+  }, [currentDate, timeRange, db, isSyncing, isSimulationMode]);
 
   const getEditableDay = (): IDayData => {
     const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
@@ -90,7 +93,9 @@ export const useBienestarData = () => {
       return newDb;
     });
 
-    // 2. Persist to PocketBase (Async)
+    // 2. Persist to PocketBase (Async) - ONLY IF NOT SIMULATING
+    if (isSimulationMode) return;
+
     try {
       // Check if exists
       try {
@@ -103,7 +108,6 @@ export const useBienestarData = () => {
       }
     } catch (err) {
       console.error(`Failed to sync ${date} to Cloud:`, err);
-      // TODO: Implement retry queue
     }
   };
 
@@ -236,9 +240,11 @@ export const useBienestarData = () => {
 
     if (type === 'actividades') {
       const flowId = `${id}-flow`;
-      filteredList = filteredList.filter(item => item.id !== id && item.id !== flowId);
+      // FORCE STRING COMPARISON
+      filteredList = filteredList.filter(item => String(item.id) !== String(id) && String(item.id) !== String(flowId));
     } else {
-      filteredList = filteredList.filter(item => item.id !== id);
+      // FORCE STRING COMPARISON
+      filteredList = filteredList.filter(item => String(item.id) !== String(id));
     }
 
     saveDayData(targetDate, { ...currentDataSnapshot, [type]: filteredList });
@@ -259,22 +265,25 @@ export const useBienestarData = () => {
   };
 
   const handleSimulate = () => {
-    // Simulation generates multiple days usually, or just replaces current DB
-    // Since simulateData returns a FULL DB, we need to iterate and save each day?
-    // Or just save specific days. simulateData usually returns a localized DB object.
+    setIsSimulationMode(true);
     const newDb = simulateData(db);
 
-    // Update local state immediately
+    // Update local state ONLY - DO NOT SYNC TO CLOUD
     setDb(newDb);
     localStorage.setItem('bienestarDB', JSON.stringify(newDb));
+  };
 
-    // Persist all simulated days (BATCH)
-    Object.keys(newDb).forEach(date => {
-      saveDayData(date, newDb[date]);
-    });
+  const revertSimulation = () => {
+    setIsSimulationMode(false);
+    // Reload real data from Cloud
+    loadDataFromCloud();
   };
 
   const handleImport = (json: string) => {
+    if (isSimulationMode) {
+      alert("No puedes importar datos mientras estás en modo simulación.");
+      return;
+    }
     const imported = JSON.parse(json);
     setDb(imported); // Local update
     localStorage.setItem('bienestarDB', JSON.stringify(imported));
@@ -344,6 +353,7 @@ export const useBienestarData = () => {
     deleteItem,
     resetData,
     handleSimulate,
+    revertSimulation,
     handleImport,
     toggleFlujo
   };

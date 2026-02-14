@@ -23,7 +23,7 @@ export default function App() {
   const {
     db, currentData, currentDate, setCurrentDate, timeRange, setTimeRange,
     updateDayData, addActivity, addState, addEvent, deleteItem, resetData,
-    handleSimulate, handleImport, toggleFlujo
+    handleSimulate, toggleFlujo, revertSimulation
   } = useBienestarData();
 
   // --- MOBILE DETECTION ---
@@ -100,7 +100,7 @@ export default function App() {
   };
 
   const onEndSimulation = () => {
-    resetData('all');
+    revertSimulation();
     setIsSimulating(false);
   };
 
