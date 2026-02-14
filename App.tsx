@@ -17,12 +17,13 @@ import { TimeModal } from './components/modals/TimeModal';
 import { SimulationModal } from './components/modals/SimulationModal';
 import { ActionModal } from './components/modals/ActionModal';
 import { MasterModal } from './components/modals/MasterModal';
+import { DBSetupModal } from './components/modals/DBSetupModal';
 
 export default function App() {
-  const { 
+  const {
     db, currentData, currentDate, setCurrentDate, timeRange, setTimeRange,
-    updateDayData, addActivity, addState, addEvent, deleteItem, resetData, 
-    handleSimulate, handleImport, toggleFlujo 
+    updateDayData, addActivity, addState, addEvent, deleteItem, resetData,
+    handleSimulate, handleImport, toggleFlujo
   } = useBienestarData();
 
   // --- MOBILE DETECTION ---
@@ -34,25 +35,26 @@ export default function App() {
   }, []);
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSimulating, setIsSimulating] = useState(false); 
-  
+  const [isSimulating, setIsSimulating] = useState(false);
+
   // UI State
-  const [editingId, setEditingId] = useState<string | number | null>(null); 
-  const [timeModalType, setTimeModalType] = useState<'arranque' | 'finDia' | 'horasSueno' | null>(null); 
-  const [tempTime, setTempTime] = useState(7.0); 
-  
+  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [timeModalType, setTimeModalType] = useState<'arranque' | 'finDia' | 'horasSueno' | null>(null);
+  const [tempTime, setTempTime] = useState(7.0);
+
   const [showActModal, setShowActModal] = useState(false);
   const [showStateModal, setShowStateModal] = useState(false);
   const [showSimulateModal, setShowSimulateModal] = useState(false);
   const [showActionModal, setShowActionModal] = useState(false);
   const [showMasterModal, setShowMasterModal] = useState(false);
+  const [showDBSetup, setShowDBSetup] = useState(false);
 
   // Form State
   const [formActividad, setFormActividad] = useState({ categoria: '', tipo: '', desc: '', inicio: '', fin: '', isFlow: false });
-  const [formEstado, setFormEstado] = useState<{energia: number, contexto: string, expNegativa: boolean, variables: any, inicio: string, fin: string}>({ 
-    energia: 75, contexto: '', variables: {}, expNegativa: false, inicio: '', fin: '' 
+  const [formEstado, setFormEstado] = useState<{ energia: number, contexto: string, expNegativa: boolean, variables: any, inicio: string, fin: string }>({
+    energia: 75, contexto: '', variables: {}, expNegativa: false, inicio: '', fin: ''
   });
-  
+
   // State for Action Modal default time (since ActionModal handles its own form state)
   const [actionInitialTime, setActionInitialTime] = useState(7.0);
 
@@ -66,23 +68,23 @@ export default function App() {
 
   // --- HELPER: Get Last End Time ---
   const getLastEndTime = (list: any[]) => {
-      if (!list || list.length === 0) return 7.0;
-      const last = list[list.length - 1];
-      // Activity has 'fin', State has 'fin' (or 't' + duration), Event has 'fin' (or 't')
-      // Safely calculate end time
-      let endTime = last.fin;
-      if (endTime === undefined || endTime === null) {
-          endTime = last.t + 1; // Default duration 1h if no fin
-      }
-      return parseFloat(endTime);
+    if (!list || list.length === 0) return 7.0;
+    const last = list[list.length - 1];
+    // Activity has 'fin', State has 'fin' (or 't' + duration), Event has 'fin' (or 't')
+    // Safely calculate end time
+    let endTime = last.fin;
+    if (endTime === undefined || endTime === null) {
+      endTime = last.t + 1; // Default duration 1h if no fin
+    }
+    return parseFloat(endTime);
   };
 
   // --- HANDLERS ---
   const handleSaveTimeConfig = () => {
     updateDayData({
       ...currentData,
-      config: { 
-        ...currentData.config, 
+      config: {
+        ...currentData.config,
         horaArranque: timeModalType === 'arranque' ? tempTime : currentData.config.horaArranque,
         finDia: timeModalType === 'finDia' ? tempTime : currentData.config.finDia,
         horasSueno: timeModalType === 'horasSueno' ? tempTime : currentData.config.horasSueno
@@ -91,50 +93,27 @@ export default function App() {
     setTimeModalType(null);
   };
 
-  const onExportData = () => {
-    const dataStr = JSON.stringify(db, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `bienestros_${currentDate}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const onImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        handleImport(e.target.result as string);
-        setIsSimulating(false); 
-    };
-    reader.readAsText(file);
-  };
-
   const onConfirmSimulation = () => {
-      handleSimulate();
-      setIsSimulating(true);
-      setShowSimulateModal(false);
+    handleSimulate();
+    setIsSimulating(true);
+    setShowSimulateModal(false);
   };
 
   const onEndSimulation = () => {
-      resetData('all');
-      setIsSimulating(false);
+    resetData('all');
+    setIsSimulating(false);
   };
 
   const handleResetData = (section: string) => {
-      if(window.confirm("¿Estás seguro de limpiar todos los datos? Esto no se puede deshacer.")) {
-          resetData(section);
-          setIsSimulating(false);
-      }
+    if (window.confirm("¿Estás seguro de limpiar todos los datos? Esto no se puede deshacer.")) {
+      resetData(section);
+      setIsSimulating(false);
+    }
   };
 
   const handlePrepareEditActivity = (act: IActivity) => {
     setEditingId(act.id);
-    
+
     // Check if a linked flow activity exists (convention: ID + '-flow')
     const hasLinkedFlow = currentData.actividades.some(a => a.id === `${act.id}-flow`);
 
@@ -148,38 +127,38 @@ export default function App() {
     });
     setShowActModal(true);
   };
-  
+
   // OPEN NEW ACTIVITY - AUTO FILL TIME
   const handleOpenNewActivity = () => {
-      setEditingId(null);
-      const startTime = getLastEndTime(currentData.actividades);
-      setFormActividad({
-          categoria: '', tipo: '', desc: '', 
-          inicio: startTime.toFixed(1), 
-          fin: (startTime + 1).toFixed(1), 
-          isFlow: false
-      }); 
-      setShowActModal(true);
+    setEditingId(null);
+    const startTime = getLastEndTime(currentData.actividades);
+    setFormActividad({
+      categoria: '', tipo: '', desc: '',
+      inicio: startTime.toFixed(1),
+      fin: (startTime + 1).toFixed(1),
+      isFlow: false
+    });
+    setShowActModal(true);
   };
 
   const handleSubmitActivity = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-        const catObj = CATEGORIAS_ACTIVIDAD.find(c => c.id === formActividad.categoria);
-        const optObj = catObj?.opciones.find(o => o.value === formActividad.tipo);
-        
-        // Single call to addActivity now handles both main activity AND flow logic
-        addActivity({
-            ...formActividad,
-            label: optObj?.label,
-            color: catObj?.color
-        }, editingId as string);
-        
-        setFormActividad({ categoria: '', tipo: '', desc: '', inicio: '', fin: '', isFlow: false });
-        setEditingId(null);
-        setShowActModal(false);
+      const catObj = CATEGORIAS_ACTIVIDAD.find(c => c.id === formActividad.categoria);
+      const optObj = catObj?.opciones.find(o => o.value === formActividad.tipo);
+
+      // Single call to addActivity now handles both main activity AND flow logic
+      addActivity({
+        ...formActividad,
+        label: optObj?.label,
+        color: catObj?.color
+      }, editingId as string);
+
+      setFormActividad({ categoria: '', tipo: '', desc: '', inicio: '', fin: '', isFlow: false });
+      setEditingId(null);
+      setShowActModal(false);
     } catch (err: any) {
-        alert(err.message);
+      alert(err.message);
     }
   };
 
@@ -190,14 +169,14 @@ export default function App() {
 
     const uiVars: any = {};
     VARIABLES_EMOCIONALES.forEach(key => {
-        uiVars[key] = fromPct(st[key] || 0);
+      uiVars[key] = fromPct(st[key] || 0);
     });
 
     setFormEstado({
       energia: v,
       contexto: contexto || 'Normal',
       expNegativa: false,
-      variables: uiVars, 
+      variables: uiVars,
       inicio: t.toString(),
       fin: st.fin ? st.fin.toString() : (t + 1).toString()
     });
@@ -206,45 +185,45 @@ export default function App() {
 
   // OPEN NEW STATE - AUTO FILL TIME
   const handleOpenNewState = () => {
-      setEditingId(null); 
-      const startTime = getLastEndTime(currentData.estados);
-      setFormEstado(prev => ({
-          ...prev, 
-          inicio: startTime.toFixed(1),
-          fin: (startTime + 1).toFixed(1)
-      }));
-      setShowStateModal(true); 
+    setEditingId(null);
+    const startTime = getLastEndTime(currentData.estados);
+    setFormEstado(prev => ({
+      ...prev,
+      inicio: startTime.toFixed(1),
+      fin: (startTime + 1).toFixed(1)
+    }));
+    setShowStateModal(true);
   };
-  
+
   // OPEN NEW ACTION - AUTO FILL TIME
   const handleOpenNewAction = () => {
-      // Logic: If there are events, use last event time. If not, use last Activity time.
-      let startTime = 7.0;
-      if (currentData.eventos.length > 0) {
-          startTime = getLastEndTime(currentData.eventos);
-      } else {
-          startTime = getLastEndTime(currentData.actividades);
-      }
-      setActionInitialTime(startTime);
-      setShowActionModal(true);
+    // Logic: If there are events, use last event time. If not, use last Activity time.
+    let startTime = 7.0;
+    if (currentData.eventos.length > 0) {
+      startTime = getLastEndTime(currentData.eventos);
+    } else {
+      startTime = getLastEndTime(currentData.actividades);
+    }
+    setActionInitialTime(startTime);
+    setShowActionModal(true);
   };
 
   const handleSubmitState = (e?: React.FormEvent) => {
-    if(e) e.preventDefault();
+    if (e) e.preventDefault();
     try {
-        addState(formEstado, editingId);
-        setEditingId(null);
-        setShowStateModal(false);
+      addState(formEstado, editingId);
+      setEditingId(null);
+      setShowStateModal(false);
     } catch (err: any) {
-        alert(err.message);
+      alert(err.message);
     }
   };
 
   const metrics = useMemo(() => calculateMetrics(currentData, currentData.isAggregated, timeRange), [currentData, timeRange]);
 
   const hasData = useMemo(() => {
-    return Object.values(db).some((day: IDayData) => 
-      (day.actividades && day.actividades.length > 0) || 
+    return Object.values(db).some((day: IDayData) =>
+      (day.actividades && day.actividades.length > 0) ||
       (day.estados && day.estados.length > 0)
     );
   }, [db]);
@@ -252,8 +231,8 @@ export default function App() {
   // --- MOBILE RENDER ---
   if (isMobile) {
     return (
-      <MobileDashboardView 
-        currentData={currentData} 
+      <MobileDashboardView
+        currentData={currentData}
         metrics={metrics}
         handlers={{ addActivity, addState, addEvent, toggleFlujo }}
         db={db}
@@ -264,74 +243,72 @@ export default function App() {
   // --- DESKTOP RENDER ---
   return (
     <div className="min-h-screen bg-[#f6f8f7] text-[#0e1b13] font-sans pb-10">
-      
-      <Header 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        currentData={currentData} 
-        toggleFlujo={toggleFlujo} 
-        onOpenTimeModal={() => { setTimeModalType('arranque'); setTempTime(currentData.config.horaArranque || 7); }} 
+
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentData={currentData}
+        toggleFlujo={toggleFlujo}
+        onOpenTimeModal={() => { setTimeModalType('arranque'); setTempTime(currentData.config.horaArranque || 7); }}
+        onOpenDBSetup={() => setShowDBSetup(true)}
       />
 
       <div className="max-w-6xl mx-auto px-4 mt-8">
-        
+
         {/* TIME FILTER */}
         <div className="flex flex-wrap gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit mb-6 items-center">
           {TIME_RANGES.map(range => (
             <button
               key={range}
               onClick={() => setTimeRange(range as TimeRange)}
-              className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-                timeRange === range 
-                ? 'bg-[#19e66f] text-[#0e1b13] shadow-sm' 
+              className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${timeRange === range
+                ? 'bg-[#19e66f] text-[#0e1b13] shadow-sm'
                 : 'text-gray-500 hover:bg-gray-50'
-              }`}
+                }`}
             >
               {range}
             </button>
           ))}
           {/* Day Selector */}
           {timeRange === 'DÍA' && (
-             <div className="ml-2 flex items-center gap-2 border-l border-gray-200 pl-2">
-                <button onClick={() => {
-                    const d = new Date(currentDate); d.setDate(d.getDate()-1);
-                    setCurrentDate(d.toISOString().split('T')[0]);
-                }} className="p-1 hover:bg-gray-100 rounded"><ChevronLeft size={14}/></button>
-                <span className="text-xs font-mono font-bold text-gray-700">{currentDate}</span>
-                <button onClick={() => {
-                    const d = new Date(currentDate); d.setDate(d.getDate()+1);
-                    setCurrentDate(d.toISOString().split('T')[0]);
-                }} className="p-1 hover:bg-gray-100 rounded"><ChevronRight size={14}/></button>
-             </div>
+            <div className="ml-2 flex items-center gap-2 border-l border-gray-200 pl-2">
+              <button onClick={() => {
+                const d = new Date(currentDate); d.setDate(d.getDate() - 1);
+                setCurrentDate(d.toISOString().split('T')[0]);
+              }} className="p-1 hover:bg-gray-100 rounded"><ChevronLeft size={14} /></button>
+              <span className="text-xs font-mono font-bold text-gray-700">{currentDate}</span>
+              <button onClick={() => {
+                const d = new Date(currentDate); d.setDate(d.getDate() + 1);
+                setCurrentDate(d.toISOString().split('T')[0]);
+              }} className="p-1 hover:bg-gray-100 rounded"><ChevronRight size={14} /></button>
+            </div>
           )}
         </div>
 
         {activeTab === 'dashboard' && (
-          <DashboardView 
+          <DashboardView
             currentData={currentData}
             metrics={metrics}
             updateDayData={updateDayData}
             onOpenActModal={handleOpenNewActivity}
             onOpenStateModal={handleOpenNewState}
             onOpenActionModal={handleOpenNewAction}
-            onOpenFlowModal={() => {}} 
+            onOpenFlowModal={() => { }}
             onOpenMasterModal={() => setShowMasterModal(true)}
-            onOpenTimeModal={(type) => { 
-                setTimeModalType(type); 
-                let initialTime = 7.0;
-                if (type === 'arranque') initialTime = currentData.config.horaArranque || 7;
-                else if (type === 'finDia') initialTime = currentData.config.finDia || 23.5;
-                else if (type === 'horasSueno') initialTime = currentData.config.horasSueno || 7;
-                setTempTime(initialTime); 
+            onOpenTimeModal={(type) => {
+              setTimeModalType(type);
+              let initialTime = 7.0;
+              if (type === 'arranque') initialTime = currentData.config.horaArranque || 7;
+              else if (type === 'finDia') initialTime = currentData.config.finDia || 23.5;
+              else if (type === 'horasSueno') initialTime = currentData.config.horasSueno || 7;
+              setTempTime(initialTime);
             }}
           />
         )}
 
         {activeTab === 'registros' && (
-          <RecordsView 
+          <RecordsView
             currentData={currentData}
-            onExport={onExportData}
-            onImport={onImportData}
             onSimulate={() => setShowSimulateModal(true)}
             onEndSimulation={onEndSimulation}
             onReset={handleResetData}
@@ -344,7 +321,7 @@ export default function App() {
         )}
 
         {activeTab === 'habitos' && (
-          <HabitsView 
+          <HabitsView
             db={db}
             timeRange={timeRange}
           />
@@ -352,7 +329,7 @@ export default function App() {
 
       </div>
 
-      <ActivityModal 
+      <ActivityModal
         isOpen={showActModal}
         onClose={() => { setShowActModal(false); setEditingId(null); }}
         form={formActividad}
@@ -361,28 +338,28 @@ export default function App() {
         isEditing={!!editingId}
       />
 
-      <StateModal 
+      <StateModal
         isOpen={showStateModal}
         onClose={() => { setShowStateModal(false); setEditingId(null); }}
         form={formEstado}
         setForm={setFormEstado}
         onSubmit={handleSubmitState}
         isEditing={!!editingId}
-        onVarChange={(k, v) => setFormEstado(p => ({...p, variables: {...p.variables, [k]: parseInt(v)}}))}
+        onVarChange={(k, v) => setFormEstado(p => ({ ...p, variables: { ...p.variables, [k]: parseInt(v) } }))}
         timeRange={timeRange}
         currentDate={currentDate}
       />
 
-      <ActionModal 
+      <ActionModal
         isOpen={showActionModal}
         onClose={() => setShowActionModal(false)}
         onSubmit={addEvent}
-        initialTime={actionInitialTime} 
+        initialTime={actionInitialTime}
         onAddState={(form) => addState(form, null)}
         onAddActivity={(form) => addActivity(form, null)}
       />
 
-      <TimeModal 
+      <TimeModal
         isOpen={!!timeModalType}
         onClose={() => setTimeModalType(null)}
         type={timeModalType}
@@ -391,7 +368,7 @@ export default function App() {
         onSave={handleSaveTimeConfig}
       />
 
-      <SimulationModal 
+      <SimulationModal
         isOpen={showSimulateModal}
         onClose={() => setShowSimulateModal(false)}
         onConfirm={onConfirmSimulation}
@@ -407,6 +384,13 @@ export default function App() {
           addEvent: addEvent
         }}
       />
+
+      {showDBSetup && (
+        <DBSetupModal
+          localDB={db}
+          onClose={() => setShowDBSetup(false)}
+        />
+      )}
 
     </div>
   );
