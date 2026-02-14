@@ -29,8 +29,12 @@ export const DBSetupModal: React.FC<DBSetupModalProps> = ({ onClose, localDB }) 
             setStatus('creating');
             // 2. Check/Create Collection
             try {
-                await pb.collections.getOne(COLLECTIONS.DAILY_LOGS);
-                addLog("ℹ️ La colección 'daily_logs' ya existe.");
+                const col = await pb.collections.getOne(COLLECTIONS.DAILY_LOGS);
+                addLog("ℹ️ La colección 'daily_logs' ya existe. Actualizando permisos...");
+                await pb.collections.update(col.id, {
+                    listRule: '', viewRule: '', createRule: '', updateRule: '', deleteRule: ''
+                });
+                addLog("✅ Permisos actualizados a PÚBLICO.");
             } catch (err) {
                 addLog("⚙️ Creando colección 'daily_logs'...");
                 await pb.collections.create({
