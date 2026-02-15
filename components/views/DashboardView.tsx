@@ -67,7 +67,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Metrics Grid */}
         {/* Metrics - Compact grid on mobile (showing extra rows) / Flex on desktop */}
-        <div className="grid grid-cols-4 md:grid-cols-5 gap-1.5 md:gap-3 pb-1 md:pb-0">
+        <div className="grid grid-cols-4 md:grid-cols-5 gap-1 md:gap-3 pb-0 md:pb-0 mb-0">
           {/* Primary Metrics */}
           <div className="min-w-0"><MetricCard title="Aprovechado" value={metrics.aprovechadoPct + "%"} detail={`(${metrics.valDisp})`} color="text-indigo-600" /></div>
           <div className="min-w-0"><MetricCard title="Útil" value={metrics.utilPct + "%"} detail={`(${metrics.valUtil})`} color="text-blue-600" /></div>
@@ -77,26 +77,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Secondary Metrics (Mobile Extended Grid) */}
           <div className="md:hidden min-w-0"><MetricCard title="Sueño" value={(currentData.config.horasSueno || 7) + "h"} detail={formatTime(currentData.config.horaArranque || 7)} color="text-purple-600" /></div>
-          <div className="md:hidden min-w-0">
-            <MetricCard
-              title="PROD. M-T-N"
-              value={
-                <div className="flex justify-between w-full px-0.5 items-center mt-0.5 font-mono text-[9px] font-bold">
-                  <span className={metrics.prodMorning >= 50 ? "text-green-600" : "text-red-500"}>{metrics.prodMorning}</span>
-                  <span className={metrics.prodAfternoon >= 50 ? "text-green-600" : "text-red-500"}>{metrics.prodAfternoon}</span>
-                  <span className={metrics.prodNight >= 50 ? "text-green-600" : "text-red-500"}>{metrics.prodNight}</span>
-                </div>
-              }
-              detail="%"
-              color="text-gray-700"
-            />
-          </div>
+
+          {/* Productivity Split */}
+          <div className="md:hidden min-w-0"><MetricCard title="Prod. Mañana" value={metrics.prodMorning + "%"} detail="7-12h" color={metrics.prodMorning >= 50 ? "text-green-600" : "text-red-500"} /></div>
+          <div className="md:hidden min-w-0"><MetricCard title="Prod. Tarde" value={metrics.prodAfternoon + "%"} detail="12-19h" color={metrics.prodAfternoon >= 50 ? "text-green-600" : "text-red-500"} /></div>
+          <div className="md:hidden min-w-0"><MetricCard title="Prod. Noche" value={metrics.prodNight + "%"} detail="19-24h" color={metrics.prodNight >= 50 ? "text-green-600" : "text-red-500"} /></div>
+
           <div className="md:hidden min-w-0"><MetricCard title="Arranque" value={formatTime(currentData.config.horaArranque || 7)} detail="Inicio" color="text-green-600" /></div>
           <div className="md:hidden min-w-0"><MetricCard title="Fin Día" value={formatTime(currentData.config.finDia || 23.5)} detail="Cierre" color="text-gray-600" /></div>
         </div>
 
         {/* Chart */}
-        <div className="bg-white rounded-xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] border border-gray-50 p-1 md:p-6 relative mt-1">
+        <div className="bg-white rounded-xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] border border-gray-50 p-1 md:p-6 relative mt-0">
           <div className="flex justify-between items-center mb-1 md:mb-6">
             <div className="hidden md:flex items-center gap-3">
               <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
