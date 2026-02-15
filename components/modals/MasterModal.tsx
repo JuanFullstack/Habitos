@@ -1,365 +1,311 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../UIComponents';
 import { CATEGORIAS_ACTIVIDAD, VARIABLES_EMOCIONALES } from '../../constants';
 import { IDayData } from '../../types';
 import { formatTime } from '../../utils/calculations';
-import { Clock, Activity, Brain, Zap } from 'lucide-react';
+import { Clock, Activity, Brain, Zap, Minus, Plus } from 'lucide-react';
 
 interface MasterModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  currentData: IDayData;
-  handlers: {
-    addActivity: (form: any, id: null) => void;
-    addState: (form: any, id: null) => void;
-    addEvent: (data: any) => void;
-  };
+    isOpen: boolean;
+    onClose: () => void;
+    currentData: IDayData;
+    handlers: {
+        addActivity: (form: any, id: null) => void;
+        addState: (form: any, id: null) => void;
+        addEvent: (data: any) => void;
+    };
 }
 
 const ACTION_PRESETS = [
-    { label: 'Meditación 12', icon: '🧘‍♀️', duration: 0.2 },
-    { label: 'Meditación 30', icon: '☯️', duration: 0.5 },
-    { label: 'Reflexión', icon: '💡', duration: 0 },
-    { label: 'Cambio', icon: '♻️', duration: 0.1 },
-    { label: 'Negativo', icon: '⛔', duration: 0.1 }
+    { label: 'Meditación', icon: '🧘‍♀️' },
+    { label: 'Reflexión', icon: '💡' },
+    { label: 'Cambio', icon: '♻️' },
+    { label: 'Negativo', icon: '⛔' }
 ];
 
 export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, currentData, handlers }) => {
-  const [activeTab, setActiveTab] = useState<'actividad' | 'estado' | 'accion'>('actividad');
-  
-  // Forms
-  const [actForm, setActForm] = useState({ categoria: '', tipo: '', desc: '', inicio: '', fin: '', isFlow: false });
-  const [stForm, setStForm] = useState({ energia: 75, contexto: '', variables: {} as any, inicio: '', fin: '' });
-  const [actionForm, setActionForm] = useState({ label: '', icon: '', inicio: '', desc: '' });
-  
-  // Reflection State
-  const [reflexionDuration, setReflexionDuration] = useState(1.0);
+    const [activeTab, setActiveTab] = useState<'actividad' | 'estado' | 'accion'>('actividad');
 
-  // Initialize State Vars
-  useEffect(() => {
-    const vars: any = {};
-    VARIABLES_EMOCIONALES.forEach(v => vars[v] = 0);
-    setStForm(prev => ({...prev, variables: vars}));
-  }, []);
+    // --- UNIFIED TIME STATE ---
+    const [baseTime, setBaseTime] = useState(7.0);
+    const [duration, setDuration] = useState(1.0); // Default 1 hour
 
-  // Auto-fill times when data changes or tab changes
-  useEffect(() => {
-    if (!isOpen) return;
+    // Forms
+    const [actForm, setActForm] = useState({ categoria: '', tipo: '', desc: '', isFlow: false });
+    const [stForm, setStForm] = useState({ energia: 75, variables: {} as any });
+    const [actionForm, setActionForm] = useState({ label: '', icon: '', desc: '' });
 
-    const getLastTime = (list: any[]) => {
-        if (!list || list.length === 0) return 7.0; // DEFAULT TO 7.0
-        const last = list[list.length - 1];
-        const endTime = last.fin !== undefined ? last.fin : (last.t + 1);
-        return parseFloat(endTime);
+    // Init State Vars
+    useEffect(() => {
+        const vars: any = {};
+        VARIABLES_EMOCIONALES.forEach(v => vars[v] = 0);
+        setStForm(prev => ({ ...prev, variables: vars }));
+    }, []);
+
+    // AUTO-CALC START TIME (Logic: End of last relevant item)
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const getLastTime = (list: any[]) => {
+            if (!list || list.length === 0) return 7.0;
+            const last = list[list.length - 1];
+            // If it has 'fin', use it. If it's an event (t), use t + duration (if any) or t
+            if (last.fin !== undefined) return parseFloat(last.fin);
+            return parseFloat(last.t) + (last.duration || 0); // Event fallback
+        };
+
+        let nextStart = 7.0;
+        // Decision logic: Usually we append to the Activity stream for continuity
+        // But if we are in 'accion' tab, maybe we want to align with activities too?
+        // Let's standardise: Start Time = End of last ACTIVITY (primary timeline)
+        if (currentData.actividades.length > 0) {
+            nextStart = getLastTime(currentData.actividades);
+        } else if (currentData.estados.length > 0) {
+            nextStart = getLastTime(currentData.estados);
+        }
+
+        setBaseTime(nextStart);
+        setDuration(1.0); // Reset duration on open
+    }, [isOpen, currentData, activeTab]);
+
+    // Derived End Time
+    const endTime = useMemo(() => baseTime + duration, [baseTime, duration]);
+
+    // --- HANDLERS ---
+    const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setDuration(parseFloat(e.target.value));
     };
 
-    const nextActStart = getLastTime(currentData.actividades);
-    const nextStStart = getLastTime(currentData.estados);
-    
-    // For actions, sync with events if they exist, otherwise follow activity flow
-    const nextActionStart = currentData.eventos.length > 0 
-        ? getLastTime(currentData.eventos) 
-        : nextActStart;
+    const handleActSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const catObj = CATEGORIAS_ACTIVIDAD.find(c => c.id === actForm.categoria);
+            const optObj = catObj?.opciones.find(o => o.value === actForm.tipo);
 
-    setActForm(f => ({ ...f, inicio: nextActStart.toFixed(1), fin: (nextActStart + 1).toFixed(1) }));
-    setStForm(f => ({ ...f, inicio: nextStStart.toFixed(1), fin: (nextStStart + 1).toFixed(1) }));
-    setActionForm(f => ({ ...f, inicio: nextActionStart.toFixed(1) }));
+            handlers.addActivity({
+                ...actForm,
+                label: optObj?.label,
+                color: catObj?.color,
+                inicio: baseTime.toFixed(1),
+                fin: endTime.toFixed(1)
+            }, null);
 
-  }, [isOpen, currentData.actividades, currentData.estados, currentData.eventos]);
+            setActForm(prev => ({ ...prev, desc: '', isFlow: false }));
+            onClose();
+        } catch (err: any) { alert(err.message); }
+    };
 
+    const handleStSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            handlers.addState({
+                ...stForm,
+                inicio: baseTime.toFixed(1),
+                fin: endTime.toFixed(1)
+            }, null);
+            onClose();
+        } catch (err: any) { alert(err.message); }
+    };
 
-  // Handlers
-  const handleActSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-        const catObj = CATEGORIAS_ACTIVIDAD.find(c => c.id === actForm.categoria);
-        const optObj = catObj?.opciones.find(o => o.value === actForm.tipo);
-        
-        // Single atomic call
-        handlers.addActivity({
-            ...actForm,
-            label: optObj?.label,
-            color: catObj?.color
-        }, null);
+    const handleActionSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            // Actions now have duration too based on the slider
+            handlers.addEvent({
+                label: actionForm.label,
+                icon: actionForm.icon,
+                t: baseTime,
+                fin: endTime,
+                descripcion: actionForm.desc
+            });
 
-        // Reset specific fields only
-        setActForm(prev => ({...prev, desc: '', isFlow: false})); 
-    } catch(err: any) { alert(err.message); }
-  };
+            setActionForm(prev => ({ ...prev, label: '', icon: '', desc: '' }));
+            onClose();
+            alert("Acción Guardada con duración: " + formatTime(duration, true));
+        } catch (err: any) { alert(err.message); }
+    };
 
-  const handleStSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-        handlers.addState(stForm, null);
-    } catch(err: any) { alert(err.message); }
-  };
+    // --- RENDER HELPERS ---
+    const renderTimeSlider = () => (
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 shadow-inner">
+            <div className="flex justify-between items-center mb-4">
+                <div className="text-center">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase">Inicio</div>
+                    <div className="text-xl font-black text-gray-700">{formatTime(baseTime)}</div>
+                </div>
 
-  const handleActionSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      try {
-          const startT = parseFloat(actionForm.inicio);
-
-          if (actionForm.label.includes('Meditación')) {
-              const midT = startT + 0.5;
-              const preset = ACTION_PRESETS.find(p => p.label === actionForm.label);
-              
-              // State 1
-              handlers.addState({
-                 energia: 40, contexto: 'Meditación Inicio', expNegativa: false,
-                 variables: { Ri: 4, Voluntad: 2, Distracción: 4, Horus: 2, Energía: 2 },
-                 inicio: startT.toFixed(1), fin: midT.toFixed(1)
-              }, null);
-              
-              // State 2
-              handlers.addState({
-                 energia: 65, contexto: 'Meditación Fin', expNegativa: false,
-                 variables: { Ri: 4, Voluntad: 4, Distracción: 1, Horus: 3, Energía: 3 },
-                 inicio: midT.toFixed(1), fin: (midT + 0.5).toFixed(1)
-              }, null);
-
-              // Event
-              handlers.addEvent({
-                  label: actionForm.label, icon: actionForm.icon,
-                  t: startT, fin: startT + (preset ? preset.duration : 0.2), descripcion: actionForm.desc
-              });
-
-          } else if (actionForm.label === 'Reflexión') {
-              const endT = startT + reflexionDuration;
-
-              // State
-              handlers.addState({
-                 energia: 100, contexto: 'Reflexión', expNegativa: false,
-                 variables: { Ri: 0, Voluntad: 0, Distracción: 0, Horus: 0, Energía: 5 },
-                 inicio: startT.toFixed(1), fin: endT.toFixed(1)
-              }, null);
-
-              // Activity
-              handlers.addActivity({
-                 categoria: 'general', tipo: 'reflexion', desc: 'Reflexión',
-                 inicio: startT.toFixed(1), fin: endT.toFixed(1), isFlow: true,
-                 label: 'Reflexión', color: CATEGORIAS_ACTIVIDAD.find(c => c.id === 'general')?.color
-              }, null);
-
-              // Event
-              handlers.addEvent({
-                  label: actionForm.label, icon: actionForm.icon,
-                  t: startT, fin: endT, descripcion: 'Reflexión'
-              });
-          } else {
-               const preset = ACTION_PRESETS.find(p => p.label === actionForm.label);
-               const duration = preset ? preset.duration : 0.1;
-               handlers.addEvent({
-                  label: actionForm.label,
-                  icon: actionForm.icon,
-                  t: startT,
-                  fin: startT + duration,
-                  descripcion: actionForm.desc
-              });
-          }
-
-          // Reset form but keep time ready for next
-          setActionForm(prev => ({...prev, label: '', icon: '', desc: ''}));
-          setReflexionDuration(1.0);
-          alert("Acción Guardada");
-      } catch(err: any) { alert(err.message); }
-  }
-
-  // Last Record Info Renderer
-  const renderLastInfo = () => {
-    if (activeTab === 'actividad') {
-        const last = currentData.actividades[currentData.actividades.length - 1];
-        if (!last) return <div className="text-xs text-gray-400 italic bg-white p-2 rounded border border-gray-100">Sin actividad previa. Inicio 7.0</div>;
-        return (
-            <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-2">
-                    <div className={`w-2 h-8 rounded-full ${last.color || 'bg-gray-300'}`}></div>
-                    <div>
-                        <div className="text-xs font-bold text-gray-800">{last.nombre}</div>
-                        <div className="text-[10px] text-gray-500 font-mono">{formatTime(last.inicio)} - {formatTime(last.fin)}</div>
+                <div className="flex-1 px-4 text-center">
+                    <div className="text-xs font-bold text-[#19e66f] bg-[#19e66f]/10 rounded-full py-1 px-3 inline-block mb-1">
+                        + {Math.floor(duration)}h {Math.round((duration % 1) * 60)}m
+                    </div>
+                    <div className="h-1 bg-gray-200 rounded-full w-full relative">
+                        <div className="absolute top-0 left-0 h-full bg-[#19e66f] rounded-full transition-all" style={{ width: `${(duration / 4) * 100}%` }}></div>
                     </div>
                 </div>
-                <div className="text-right">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">Anterior</span>
+
+                <div className="text-center">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase">Fin</div>
+                    <div className="text-xl font-black text-[#0e1b13]">{formatTime(endTime)}</div>
                 </div>
             </div>
-        );
-    }
-    if (activeTab === 'estado') {
-        const last = currentData.estados[currentData.estados.length - 1];
-        if (!last) return <div className="text-xs text-gray-400 italic bg-white p-2 rounded border border-gray-100">Sin estado previo. Inicio 7.0</div>;
-        return (
-            <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between shadow-sm">
-                <div>
-                    <div className="text-xs font-bold text-gray-800">Energía: {last.v}%</div>
-                    <div className="text-[10px] text-gray-500 font-mono">{formatTime(last.t)} - {formatTime(last.fin || last.t + 1)}</div>
-                </div>
-                <div className="text-right">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">Anterior</span>
-                </div>
+
+            <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setDuration(Math.max(0.25, duration - 0.25))} className="p-2 bg-white rounded-lg shadow-sm text-gray-500 hover:text-gray-900"><Minus size={16} /></button>
+                <input
+                    type="range"
+                    min="0.25"
+                    max="4.0"
+                    step="0.25"
+                    value={duration}
+                    onChange={handleDurationChange}
+                    className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#19e66f]"
+                />
+                <button type="button" onClick={() => setDuration(duration + 0.25)} className="p-2 bg-white rounded-lg shadow-sm text-gray-500 hover:text-gray-900"><Plus size={16} /></button>
             </div>
-        );
-    }
-    return null;
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <Modal onClose={onClose} maxWidth="max-w-xl" noBackdrop={true} draggable={true}>
-        <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Activity size={18} className="text-[#19e66f]"/> Modo Maestro
-            </h2>
-            <div className="flex bg-white border border-gray-200 p-1 rounded-lg">
-                <button onClick={() => setActiveTab('actividad')} className={`p-1.5 rounded-md transition-all ${activeTab==='actividad'?'bg-gray-100 text-gray-900 font-bold shadow-sm':'text-gray-400 hover:text-gray-600'}`} title="Actividad"><Clock size={16}/></button>
-                <button onClick={() => setActiveTab('estado')} className={`p-1.5 rounded-md transition-all ${activeTab==='estado'?'bg-gray-100 text-gray-900 font-bold shadow-sm':'text-gray-400 hover:text-gray-600'}`} title="Estado"><Brain size={16}/></button>
-                <button onClick={() => setActiveTab('accion')} className={`p-1.5 rounded-md transition-all ${activeTab==='accion'?'bg-gray-100 text-gray-900 font-bold shadow-sm':'text-gray-400 hover:text-gray-600'}`} title="Acción"><Zap size={16} className="rotate-45"/></button>
+            <div className="flex justify-between text-[9px] text-gray-400 font-bold mt-2 px-1">
+                <span>15m</span>
+                <span>1h</span>
+                <span>2h</span>
+                <span>3h</span>
+                <span>4h</span>
             </div>
         </div>
+    );
 
-        {/* Previous Record Summary */}
-        <div className="mb-5">
-            {renderLastInfo()}
-        </div>
+    if (!isOpen) return null;
 
-        {/* CONTENT FORMS - Enforcing bg-white on inputs for clarity */}
-        <div className="min-h-[280px]">
-            {activeTab === 'actividad' && (
-                <form onSubmit={handleActSubmit} className="space-y-4">
-                     <div className="grid grid-cols-2 gap-3">
-                        <select className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-2.5 text-sm font-bold shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            value={actForm.categoria} onChange={e => setActForm({...actForm, categoria: e.target.value, tipo: ''})}>
-                            <option value="">Categoría...</option>
-                            {CATEGORIAS_ACTIVIDAD.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                        </select>
-                        <select className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-2.5 text-sm font-bold shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            value={actForm.tipo} onChange={e => setActForm({...actForm, tipo: e.target.value})} disabled={!actForm.categoria}>
-                            <option value="">Tipo...</option>
-                            {actForm.categoria && CATEGORIAS_ACTIVIDAD.find(c => c.id === actForm.categoria)?.opciones.map(o => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                        </select>
-                     </div>
-                     <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase">Inicio</label>
-                            <input type="number" step="0.1" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-2 font-bold shadow-sm"
-                                value={actForm.inicio} onChange={e => setActForm({...actForm, inicio: e.target.value})} />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase">Fin</label>
-                            <input type="number" step="0.1" className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-2 font-bold shadow-sm"
-                                value={actForm.fin} onChange={e => setActForm({...actForm, fin: e.target.value})} />
-                        </div>
-                     </div>
-                     
-                     <div className="flex items-center gap-3">
-                         <input type="checkbox" id="masterFlow" className="w-4 h-4 accent-[#19e66f]" 
-                             checked={actForm.isFlow} onChange={e => setActForm({...actForm, isFlow: e.target.checked})} />
-                         <label htmlFor="masterFlow" className="text-xs font-bold text-indigo-700 flex items-center gap-1">
-                             <Zap size={12} /> Activar Flujo Simultáneo
-                         </label>
-                     </div>
-
-                     <textarea className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg p-2 text-sm shadow-sm" placeholder="Descripción (Opcional)"
-                        value={actForm.desc} onChange={e => setActForm({...actForm, desc: e.target.value})} rows={2} />
-                     <button type="submit" disabled={!actForm.tipo} className="w-full py-3 bg-[#19e66f] text-[#0e1b13] font-bold rounded-xl hover:bg-[#12a850] disabled:opacity-50 shadow-md">
-                        Cargar Actividad
-                     </button>
-                </form>
-            )}
-
-            {activeTab === 'estado' && (
-                <form onSubmit={handleStSubmit} className="space-y-4">
-                    <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
-                        <label className="block text-xs font-bold text-gray-500 mb-2">Energía ({stForm.energia}%)</label>
-                        <input type="range" min="0" max="100" className="w-full accent-[#19e66f]" 
-                            value={stForm.energia} onChange={e => setStForm({...stForm, energia: parseInt(e.target.value)})}/>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                        {VARIABLES_EMOCIONALES.slice(0, 4).map(v => (
-                             <div key={v}>
-                                <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-2">
-                                    <span>{v}</span><span>{stForm.variables[v] || 0}</span>
-                                </div>
-                                <input type="range" min="0" max="5" className="w-full accent-indigo-500 h-1.5 bg-gray-200 rounded cursor-pointer"
-                                    value={stForm.variables[v] || 0} onChange={e => setStForm({...stForm, variables: {...stForm.variables, [v]: parseInt(e.target.value)}})} />
-                             </div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <input type="number" step="0.1" className="w-full bg-white border border-gray-300 rounded p-2 text-gray-900 shadow-sm" value={stForm.inicio} onChange={e=>setStForm({...stForm, inicio: e.target.value})} />
-                        <input type="number" step="0.1" className="w-full bg-white border border-gray-300 rounded p-2 text-gray-900 shadow-sm" value={stForm.fin} onChange={e=>setStForm({...stForm, fin: e.target.value})} />
-                    </div>
-                    <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md">
-                        Cargar Estado
+    return (
+        <Modal onClose={onClose} maxWidth="max-w-lg" noBackdrop={false}>
+            {/* HEADER TABS */}
+            <div className="flex p-1 bg-gray-100 rounded-xl mb-6">
+                {[
+                    { id: 'actividad', icon: Clock, label: 'Actividad' },
+                    { id: 'estado', icon: Brain, label: 'Estado' },
+                    { id: 'accion', icon: Zap, label: 'Acción' }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === tab.id
+                                ? 'bg-white text-[#0e1b13] shadow-sm'
+                                : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                    >
+                        <tab.icon size={14} /> {tab.label}
                     </button>
-                </form>
-            )}
+                ))}
+            </div>
 
-             {activeTab === 'accion' && (
-                <form onSubmit={handleActionSubmit} className="space-y-4">
-                     <div className="grid grid-cols-2 gap-3">
-                        {ACTION_PRESETS.map(preset => (
-                            <button 
-                                key={preset.label}
-                                type="button" 
-                                onClick={() => setActionForm({...actionForm, label: preset.label, icon: preset.icon})}
-                                className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
-                                    actionForm.label === preset.label 
-                                    ? 'bg-gray-800 text-white border-gray-800 shadow-md transform scale-[1.02]' 
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                }`}
-                            >
-                                <span className="text-2xl">{preset.icon}</span>
-                                <span className="font-bold text-sm">{preset.label}</span>
-                            </button>
-                        ))}
-                     </div>
-                     
-                     <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1">Hora Inicio</label>
-                        <input type="number" step="0.1" className="w-full bg-white border border-gray-300 rounded-lg p-2.5 font-bold text-gray-900 shadow-sm" placeholder="Hora" 
-                            value={actionForm.inicio} onChange={e=>setActionForm({...actionForm, inicio: e.target.value})} />
-                     </div>
-                     
-                     {/* SLIDER ONLY FOR REFLECTION */}
-                     {actionForm.label === 'Reflexión' ? (
-                        <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="text-xs font-bold text-yellow-800">Duración Reflexión</label>
-                                <span className="font-black text-yellow-700">{reflexionDuration}h</span>
-                            </div>
-                            <input 
-                                type="range" min="0.5" max="5.0" step="0.5"
-                                className="w-full h-3 bg-yellow-200 rounded-lg appearance-none cursor-pointer accent-yellow-600"
-                                value={reflexionDuration}
-                                onChange={e => setReflexionDuration(parseFloat(e.target.value))}
-                            />
-                            <div className="flex justify-between text-[9px] text-yellow-700 font-bold mt-1">
-                                <span>30m</span><span>5h</span>
+            {/* TIME CONTROLS (SHARED) */}
+            {renderTimeSlider()}
+
+            {/* CONTENT FORMS */}
+            <div className="animate-fadeIn">
+                {activeTab === 'actividad' && (
+                    <form onSubmit={handleActSubmit} className="space-y-4">
+                        <div className="space-y-3">
+                            <label className="text-xs font-bold text-gray-400 uppercase">¿Qué vas a hacer?</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <select className="bg-white border-2 border-gray-100 text-gray-900 rounded-xl p-3 text-sm font-bold focus:border-[#19e66f] outline-none"
+                                    value={actForm.categoria} onChange={e => setActForm({ ...actForm, categoria: e.target.value, tipo: '' })}>
+                                    <option value="">1. Categoría</option>
+                                    {CATEGORIAS_ACTIVIDAD.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                </select>
+                                <select className="bg-white border-2 border-gray-100 text-gray-900 rounded-xl p-3 text-sm font-bold focus:border-[#19e66f] outline-none disabled:opacity-50"
+                                    value={actForm.tipo} onChange={e => setActForm({ ...actForm, tipo: e.target.value })} disabled={!actForm.categoria}>
+                                    <option value="">2. Actividad</option>
+                                    {actForm.categoria && CATEGORIAS_ACTIVIDAD.find(c => c.id === actForm.categoria)?.opciones.map(o => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
-                     ) : (
-                         <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1">
-                                Descripción {actionForm.label === 'Negativo' ? '(Requerido)' : '(Opcional)'}
+
+                        <div>
+                            <input type="text" className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-medium"
+                                placeholder="Descripción (Opcional)"
+                                value={actForm.desc} onChange={e => setActForm({ ...actForm, desc: e.target.value })} />
+                        </div>
+
+                        <div className="flex items-center gap-3 py-2">
+                            <input type="checkbox" id="masterFlow" className="w-5 h-5 accent-[#19e66f] rounded"
+                                checked={actForm.isFlow} onChange={e => setActForm({ ...actForm, isFlow: e.target.checked })} />
+                            <label htmlFor="masterFlow" className="text-sm font-bold text-gray-600 cursor-pointer select-none">
+                                En paralelo (Flujo)
                             </label>
-                            <input type="text" className={`w-full bg-white border rounded-lg p-2.5 text-sm text-gray-900 shadow-sm ${
-                                actionForm.label === 'Negativo' && !actionForm.desc ? 'border-red-300 ring-1 ring-red-100' : 'border-gray-300'
-                            }`} 
-                            placeholder={actionForm.label === 'Negativo' ? "Motivo del negativo..." : "Detalles..."}
-                            value={actionForm.desc} onChange={e=>setActionForm({...actionForm, desc: e.target.value})} />
-                         </div>
-                     )}
-                     
-                     <button type="submit" disabled={!actionForm.label || (actionForm.label === 'Negativo' && !actionForm.desc.trim())} 
-                        className="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
-                        Guardar Acción
-                    </button>
-                </form>
-            )}
-        </div>
-    </Modal>
-  );
+                        </div>
+
+                        <button type="submit" disabled={!actForm.tipo} className="w-full py-4 bg-[#19e66f] text-[#0e1b13] font-black text-lg rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-[#19e66f]/40 disabled:opacity-50 disabled:cursor-not-allowed">
+                            REGISTRAR ACTIVIDAD
+                        </button>
+                    </form>
+                )}
+
+                {activeTab === 'estado' && (
+                    <form onSubmit={handleStSubmit} className="space-y-6">
+                        <div>
+                            <div className="flex justify-between items-end mb-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase">Nivel de Energía</label>
+                                <span className="text-2xl font-black text-[#0e1b13]">{stForm.energia}%</span>
+                            </div>
+                            <input type="range" min="0" max="100" className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                value={stForm.energia} onChange={e => setStForm({ ...stForm, energia: parseInt(e.target.value) })} />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            {VARIABLES_EMOCIONALES.slice(0, 4).map(v => (
+                                <div key={v} className="bg-white p-2 rounded-lg border border-gray-100">
+                                    <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
+                                        <span>{v}</span>
+                                        <span className="text-indigo-600">{stForm.variables[v] || 0}</span>
+                                    </div>
+                                    <input type="range" min="0" max="5" className="w-full h-1.5 bg-gray-100 rounded-full appearance-none cursor-pointer accent-indigo-500"
+                                        value={stForm.variables[v] || 0} onChange={e => setStForm({ ...stForm, variables: { ...stForm.variables, [v]: parseInt(e.target.value) } })} />
+                                </div>
+                            ))}
+                        </div>
+
+                        <button type="submit" className="w-full py-4 bg-indigo-600 text-white font-black text-lg rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-indigo-500/40">
+                            GUARDAR ESTADO
+                        </button>
+                    </form>
+                )}
+
+                {activeTab === 'accion' && (
+                    <form onSubmit={handleActionSubmit} className="space-y-5">
+                        <div className="grid grid-cols-2 gap-3">
+                            {ACTION_PRESETS.map(preset => (
+                                <button
+                                    key={preset.label}
+                                    type="button"
+                                    onClick={() => setActionForm({ ...actionForm, label: preset.label, icon: preset.icon })}
+                                    className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${actionForm.label === preset.label
+                                            ? 'bg-yellow-50 border-yellow-400 text-yellow-900'
+                                            : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200 text-gray-500'
+                                        }`}
+                                >
+                                    <span className="text-3xl">{preset.icon}</span>
+                                    <span className="font-bold text-xs uppercase">{preset.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="bg-yellow-50/50 p-4 rounded-xl border border-yellow-100">
+                            <label className="text-[10px] font-bold text-yellow-700 uppercase mb-2 block">
+                                Detalles {actionForm.label === 'Negativo' ? '(Requerido)' : '(Opcional)'}
+                            </label>
+                            <input type="text" className="w-full bg-white border border-yellow-200 rounded-lg p-3 text-sm text-gray-800 font-medium placeholder-yellow-300 focus:border-yellow-500 outline-none"
+                                placeholder={actionForm.label === 'Negativo' ? "¿Qué pasó?" : "Notas adicionales..."}
+                                value={actionForm.desc} onChange={e => setActionForm({ ...actionForm, desc: e.target.value })} />
+                        </div>
+
+                        <button type="submit" disabled={!actionForm.label || (actionForm.label === 'Negativo' && !actionForm.desc.trim())}
+                            className="w-full py-4 bg-yellow-500 text-white font-black text-lg rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg hover:shadow-yellow-500/40 disabled:opacity-50 disabled:cursor-not-allowed">
+                            REGISTRAR ACCIÓN
+                        </button>
+                    </form>
+                )}
+            </div>
+        </Modal>
+    );
 };

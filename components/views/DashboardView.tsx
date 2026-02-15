@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Brain, Activity, Sunrise, Sunset, Eye, EyeOff, Zap, Layers } from 'lucide-react';
+import { Clock, Brain, Activity, Sunrise, Sunset, Eye, EyeOff, Zap, Layers, Plus } from 'lucide-react';
 import { MetricCard, TurnoBar, SleepGauge } from '../UIComponents';
 import ChartCanvas from '../ChartCanvas';
 import { IDayData, IMetrics } from '../../types';
@@ -62,39 +62,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Left Column */}
       <div className="lg:col-span-3 space-y-6">
         {/* Action Bar */}
-        <div className="flex flex-wrap gap-2 md:gap-4 items-center">
+        {/* Central Action Bar */}
+        <div className="flex justify-center mb-2">
           <button
-            onClick={onOpenActModal}
-            className="px-3 md:px-4 py-2 bg-[#19e66f] hover:bg-[#12a850] text-[#0e1b13] font-bold text-xs md:text-sm rounded-lg shadow-[0_10px_40px_-10px_rgba(25,230,111,0.3)] flex items-center gap-1.5 md:gap-2 transition-transform transform hover:-translate-y-1 active:scale-95"
+            onClick={onOpenMasterModal}
+            className="w-full md:w-auto px-6 py-4 bg-[#0e1b13] hover:bg-black text-white font-black text-sm md:text-base tracking-wide rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)] flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 active:scale-95 group"
           >
-            <Clock size={16} />
-            <span className="hidden sm:inline">Nueva </span>Actividad
+            <div className="p-1 bg-[#19e66f] rounded-lg text-[#0e1b13] group-hover:rotate-90 transition-transform duration-300">
+              <Plus size={20} strokeWidth={4} />
+            </div>
+            AGREGAR REGISTRO
           </button>
-          <button
-            onClick={onOpenStateModal}
-            className="px-3 md:px-4 py-2 bg-white hover:bg-gray-50 text-[#0e1b13] font-bold text-xs md:text-sm rounded-lg border border-gray-100 shadow-sm flex items-center gap-1.5 md:gap-2 transition-transform transform hover:-translate-y-1 active:scale-95"
-          >
-            <Brain size={16} />
-            Estado
-          </button>
-          <button
-            onClick={onOpenActionModal}
-            className="px-3 md:px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-bold text-xs md:text-sm rounded-lg border border-yellow-200 shadow-sm flex items-center gap-1.5 md:gap-2 transition-transform transform hover:-translate-y-1 active:scale-95"
-          >
-            <Zap size={16} className="fill-current" />
-            <span className="hidden sm:inline">Acciones</span><span className="sm:hidden">Acc.</span>
-          </button>
-
-          {/* Master Mode Button */}
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={onOpenMasterModal}
-              className="px-3 md:px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold text-xs md:text-sm rounded-lg shadow-lg flex items-center gap-1.5 md:gap-2 transition-transform transform hover:-translate-y-1 active:scale-95"
-            >
-              <Layers size={16} />
-              <span className="hidden sm:inline">Modo </span>Maestro
-            </button>
-          </div>
         </div>
 
         {/* Metrics Grid */}
