@@ -63,33 +63,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Left Column */}
       <div className="lg:col-span-3 space-y-6">
         {/* Action Bar */}
-        {/* Central Action Bar */}
-        <div className="flex justify-center mb-4">
-          <button
-            onClick={onOpenMasterModal}
-            className="w-full md:w-auto px-6 py-3 bg-white hover:bg-gray-50 text-[#0e1b13] font-bold text-sm md:text-base border border-gray-200 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:scale-95 group"
-          >
-            <div className="p-1 bg-[#19e66f]/20 text-[#12a850] rounded-lg group-hover:bg-[#19e66f] group-hover:text-[#0e1b13] transition-colors">
-              <Plus size={18} strokeWidth={3} />
-            </div>
-            <span className="tracking-tight">AGREGAR REGISTRO</span>
-          </button>
-        </div>
+        {/* Central Action Bar REMOVED - Moved to App.tsx next to filters */}
 
         {/* Metrics Grid */}
-        {/* Metrics - scrollable row on mobile */}
-        <div className="flex md:grid md:grid-cols-5 gap-2 md:gap-3 overflow-x-auto md:overflow-visible pb-2 md:pb-0 -mx-1 px-1 snap-x snap-mandatory">
-          <div className="min-w-[140px] md:min-w-0 snap-start"><MetricCard title="Aprovechado" value={metrics.aprovechadoPct + "%"} detail={`(${metrics.valDisp} / 17h)`} color="text-indigo-600" /></div>
-          <div className="min-w-[140px] md:min-w-0 snap-start"><MetricCard title="Útil" value={metrics.utilPct + "%"} detail={`(${metrics.valUtil} / ${metrics.valDisp}h)`} color="text-blue-600" /></div>
-          <div className="min-w-[140px] md:min-w-0 snap-start"><MetricCard title="Justificado" value={metrics.justificadoPct + "%"} detail={`(${metrics.valJust}h)`} color="text-teal-600" /></div>
-          <div className="min-w-[140px] md:min-w-0 snap-start"><MetricCard title="Sin Registro" value={metrics.vacioPct + "%"} detail={`(${metrics.valVacio}h)`} color="text-gray-400" /></div>
-          <div className="min-w-[140px] md:min-w-0 snap-start"><MetricCard title="Inútil" value={metrics.inutilPct + "%"} detail="Ocio > 1h" color="text-red-500" /></div>
+        {/* Metrics - Compact 5-col grid on mobile */}
+        <div className="grid grid-cols-5 gap-1 md:gap-3 pb-2 md:pb-0">
+          <div className="min-w-0"><MetricCard title="Aprovechado" value={metrics.aprovechadoPct + "%"} detail={`(${metrics.valDisp})`} color="text-indigo-600" /></div>
+          <div className="min-w-0"><MetricCard title="Útil" value={metrics.utilPct + "%"} detail={`(${metrics.valUtil})`} color="text-blue-600" /></div>
+          <div className="min-w-0"><MetricCard title="Justificado" value={metrics.justificadoPct + "%"} detail={`(${metrics.valJust})`} color="text-teal-600" /></div>
+          <div className="min-w-0"><MetricCard title="Sin Reg." value={metrics.vacioPct + "%"} detail={`(${metrics.valVacio})`} color="text-gray-400" /></div>
+          <div className="min-w-0"><MetricCard title="Inútil" value={metrics.inutilPct + "%"} detail=">1h" color="text-red-500" /></div>
         </div>
 
         {/* Chart */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] border border-gray-50 p-3 md:p-6 relative">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-3">
+        <div className="bg-white rounded-xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] border border-gray-50 p-1 md:p-6 relative">
+          <div className="flex justify-between items-center mb-1 md:mb-6">
+            <div className="hidden md:flex items-center gap-3">
               <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
                 <Activity size={18} />
               </div>
@@ -150,9 +139,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Chart - scrollable on mobile for visibility, with more width to breathe */}
-          <div className="relative w-full overflow-x-auto md:overflow-visible pb-4 custom-scrollbar">
+          <div className="relative w-full overflow-x-auto md:overflow-visible pb-2 custom-scrollbar">
             <div
-              className="relative h-[250px] md:h-[550px] transition-all duration-300 ease-out origin-left"
+              className="relative h-[480px] md:h-[550px] transition-all duration-300 ease-out origin-left"
               style={{ width: `${zoomLevel * 100}%`, minWidth: '100%' }}
             >
               <ChartCanvas

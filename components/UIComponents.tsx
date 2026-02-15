@@ -92,11 +92,11 @@ interface MetricCardProps {
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({ title, value, detail, color }) => (
-  <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
-    <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{title}</div>
+  <div className="bg-white p-1.5 md:p-3 rounded-lg md:rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full min-h-[50px]">
+    <div className="text-[7px] md:text-[10px] text-gray-400 uppercase font-bold tracking-wider truncate leading-tight">{title}</div>
     <div>
-      <div className={`text-xl font-bold ${color}`}>{value}</div>
-      {detail && <div className="text-[10px] text-gray-400 font-medium mt-0.5">{detail}</div>}
+      <div className={`text-xs md:text-xl font-bold ${color} leading-tight`}>{value}</div>
+      {detail && <div className="text-[7px] md:text-[10px] text-gray-400 font-medium mt-0 md:mt-0.5 truncate">{detail}</div>}
     </div>
   </div>
 );

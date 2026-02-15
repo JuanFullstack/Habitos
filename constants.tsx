@@ -9,7 +9,7 @@ export const CONFIG = {
   endTime: 24,
   totalHours: 17,
   graphHeight: 300,
-  chartPaddingLeft: 40,
+  chartPaddingLeft: 25,
   colors: {
     low: '#fca5a5', med: '#fde047', good: '#86efac', high: '#4ade80'
   },

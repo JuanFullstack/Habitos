@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { CATEGORIAS_ACTIVIDAD, VARIABLES_EMOCIONALES, TIME_RANGES } from './constants';
 import { calculateMetrics, formatTime } from './utils/calculations';
 import { useBienestarData } from './hooks/useBienestarData';
@@ -245,34 +245,44 @@ export default function App() {
 
       <div className="max-w-6xl mx-auto px-3 md:px-4 mt-4 md:mt-8">
 
-        {/* TIME FILTER */}
-        <div className="flex flex-wrap gap-1.5 md:gap-2 bg-white p-1 md:p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit mb-4 md:mb-6 items-center overflow-x-auto">
-          {TIME_RANGES.map(range => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range as TimeRange)}
-              className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${timeRange === range
-                ? 'bg-[#19e66f] text-[#0e1b13] shadow-sm'
-                : 'text-gray-500 hover:bg-gray-50'
-                }`}
-            >
-              {range}
-            </button>
-          ))}
-          {/* Day Selector */}
-          {timeRange === 'DÍA' && (
-            <div className="ml-2 flex items-center gap-2 border-l border-gray-200 pl-2">
-              <button onClick={() => {
-                const d = new Date(currentDate); d.setDate(d.getDate() - 1);
-                setCurrentDate(d.toISOString().split('T')[0]);
-              }} className="p-1 hover:bg-gray-100 rounded"><ChevronLeft size={14} /></button>
-              <span className="text-xs font-mono font-bold text-gray-700">{currentDate}</span>
-              <button onClick={() => {
-                const d = new Date(currentDate); d.setDate(d.getDate() + 1);
-                setCurrentDate(d.toISOString().split('T')[0]);
-              }} className="p-1 hover:bg-gray-100 rounded"><ChevronRight size={14} /></button>
-            </div>
-          )}
+        {/* TIME FILTER & ACTIONS */}
+        <div className="flex items-center gap-2 mb-4 md:mb-6 overflow-x-auto pb-1">
+          <div className="flex flex-wrap gap-1.5 md:gap-2 bg-white p-1 md:p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit items-center flex-nowrap md:flex-wrap">
+            {TIME_RANGES.map(range => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range as TimeRange)}
+                className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all whitespace-nowrap ${timeRange === range
+                  ? 'bg-[#19e66f] text-[#0e1b13] shadow-sm'
+                  : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+              >
+                {range}
+              </button>
+            ))}
+            {/* Day Selector */}
+            {timeRange === 'DÍA' && (
+              <div className="ml-2 flex items-center gap-2 border-l border-gray-200 pl-2">
+                <button onClick={() => {
+                  const d = new Date(currentDate); d.setDate(d.getDate() - 1);
+                  setCurrentDate(d.toISOString().split('T')[0]);
+                }} className="p-1 hover:bg-gray-100 rounded"><ChevronLeft size={14} /></button>
+                <span className="text-xs font-mono font-bold text-gray-700 whitespace-nowrap">{currentDate}</span>
+                <button onClick={() => {
+                  const d = new Date(currentDate); d.setDate(d.getDate() + 1);
+                  setCurrentDate(d.toISOString().split('T')[0]);
+                }} className="p-1 hover:bg-gray-100 rounded"><ChevronRight size={14} /></button>
+              </div>
+            )}
+          </div>
+
+          {/* QUICK ADD BUTTON */}
+          <button
+            onClick={() => setShowMasterModal(true)}
+            className="bg-[#0e1b13] text-white p-2.5 rounded-xl shadow-lg hover:bg-black transition-transform active:scale-95 flex items-center justify-center min-w-[40px]"
+          >
+            <Plus size={20} strokeWidth={3} />
+          </button>
         </div>
 
         {activeTab === 'dashboard' && (
