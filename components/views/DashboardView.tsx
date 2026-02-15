@@ -66,13 +66,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Central Action Bar REMOVED - Moved to App.tsx next to filters */}
 
         {/* Metrics Grid */}
-        {/* Metrics - Compact 5-col grid on mobile */}
-        <div className="grid grid-cols-5 gap-1 md:gap-3 pb-2 md:pb-0">
+        {/* Metrics - Compact grid on mobile (showing extra rows) / Flex on desktop */}
+        <div className="grid grid-cols-4 md:grid-cols-5 gap-1.5 md:gap-3 pb-2 md:pb-0">
+          {/* Primary Metrics */}
           <div className="min-w-0"><MetricCard title="Aprovechado" value={metrics.aprovechadoPct + "%"} detail={`(${metrics.valDisp})`} color="text-indigo-600" /></div>
           <div className="min-w-0"><MetricCard title="Útil" value={metrics.utilPct + "%"} detail={`(${metrics.valUtil})`} color="text-blue-600" /></div>
           <div className="min-w-0"><MetricCard title="Justificado" value={metrics.justificadoPct + "%"} detail={`(${metrics.valJust})`} color="text-teal-600" /></div>
           <div className="min-w-0"><MetricCard title="Sin Reg." value={metrics.vacioPct + "%"} detail={`(${metrics.valVacio})`} color="text-gray-400" /></div>
           <div className="min-w-0"><MetricCard title="Inútil" value={metrics.inutilPct + "%"} detail=">1h" color="text-red-500" /></div>
+
+          {/* Secondary Metrics (Mobile Extended Grid) */}
+          <div className="md:hidden min-w-0"><MetricCard title="Sueño" value={(currentData.config.horasSueno || 7) + "h"} detail={formatTime(currentData.config.horaArranque || 7)} color="text-purple-600" /></div>
+          <div className="md:hidden min-w-0"><MetricCard title="Productiv." value={metrics.promedio + "%"} detail="Global" color="text-orange-500" /></div>
+          <div className="md:hidden min-w-0"><MetricCard title="Arranque" value={formatTime(currentData.config.horaArranque || 7)} detail="Inicio" color="text-green-600" /></div>
+          <div className="md:hidden min-w-0"><MetricCard title="Fin Día" value={formatTime(currentData.config.finDia || 23.5)} detail="Cierre" color="text-gray-600" /></div>
         </div>
 
         {/* Chart */}
@@ -139,7 +146,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Chart - scrollable on mobile for visibility, with more width to breathe */}
-          <div className="relative w-full overflow-x-auto md:overflow-visible pb-2 custom-scrollbar">
+          <div className="relative w-full overflow-x-auto md:overflow-visible pb-0 [&::-webkit-scrollbar]:hidden scrollbar-none">
             <div
               className="relative h-[480px] md:h-[550px] transition-all duration-300 ease-out origin-left"
               style={{ width: `${zoomLevel * 100}%`, minWidth: '100%' }}
@@ -156,8 +163,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Right Column (Sidebar) */}
-      <div className="lg:col-span-1 space-y-4">
+      {/* Right Column (Sidebar) - Hidden on Mobile since metrics are now in grid */}
+      <div className="hidden md:block lg:col-span-1 space-y-4">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
           <h4 className="text-xs font-bold text-gray-400 uppercase mb-4">Calidad de Sueño</h4>
           <SleepGauge value={currentData.config.horasSueno || 7} />
