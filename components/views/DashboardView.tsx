@@ -63,15 +63,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="lg:col-span-3 space-y-6">
         {/* Action Bar */}
         {/* Central Action Bar */}
-        <div className="flex justify-center mb-2">
+        <div className="flex justify-center mb-4">
           <button
             onClick={onOpenMasterModal}
-            className="w-full md:w-auto px-6 py-4 bg-[#0e1b13] hover:bg-black text-white font-black text-sm md:text-base tracking-wide rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)] flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 active:scale-95 group"
+            className="w-full md:w-auto px-6 py-3 bg-white hover:bg-gray-50 text-[#0e1b13] font-bold text-sm md:text-base border border-gray-200 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 active:scale-95 group"
           >
-            <div className="p-1 bg-[#19e66f] rounded-lg text-[#0e1b13] group-hover:rotate-90 transition-transform duration-300">
-              <Plus size={20} strokeWidth={4} />
+            <div className="p-1 bg-[#19e66f]/20 text-[#12a850] rounded-lg group-hover:bg-[#19e66f] group-hover:text-[#0e1b13] transition-colors">
+              <Plus size={18} strokeWidth={3} />
             </div>
-            AGREGAR REGISTRO
+            <span className="tracking-tight">AGREGAR REGISTRO</span>
           </button>
         </div>
 
@@ -136,8 +136,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Chart - scrollable on mobile for visibility */}
-          <div className="relative w-full overflow-x-auto md:overflow-visible">
-            <div className="relative w-[700px] md:w-full h-[350px] md:h-[550px]">
+          <div className="relative w-full overflow-x-auto md:overflow-visible pb-2">
+            <div className="relative w-[700px] md:w-full h-[400px] md:h-[550px]">
               <ChartCanvas
                 data={currentData}
                 mode={chartMode}

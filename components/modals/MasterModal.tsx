@@ -17,7 +17,7 @@ interface MasterModalProps {
 }
 
 const ACTION_PRESETS = [
-    { label: 'Meditación 12', icon: '🧘‍♀️', duration: 0.2 },
+    { label: 'Meditación 15', icon: '🧘‍♀️', duration: 0.25 },
     { label: 'Meditación 30', icon: '☯️', duration: 0.5 },
     { label: 'Reflexión', icon: '💡', duration: 1.0 },
     { label: 'Cambio', icon: '♻️', duration: 0.1 },
@@ -156,14 +156,17 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
 
             {/* Quick Increments */}
             <div className="flex justify-center gap-2">
-                {[0.2, 0.5, 1.0, 1.5, 2.0].map(val => (
+                {[0.25, 0.5, 1.0, 1.5, 2.0].map(val => (
                     <button
                         key={val}
                         type="button"
                         onClick={() => setDuration(val)}
-                        className={`text-[10px] font-bold px-2 py-1 rounded border transition-all ${duration === val ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
+                        className={`text-[10px] font-bold px-3 py-1.5 rounded transition-all ${duration === val
+                                ? 'bg-[#19e66f] text-[#0e1b13] border border-[#19e66f] shadow-sm'
+                                : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
+                            }`}
                     >
-                        {val === 0.2 ? '12m' : (val === 0.5 ? '30m' : val + 'h')}
+                        {val === 0.25 ? '15m' : (val === 0.5 ? '30m' : val + 'h')}
                     </button>
                 ))}
             </div>
@@ -185,8 +188,8 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === tab.id
-                                ? 'bg-white text-[#0e1b13] shadow-sm'
-                                : 'text-gray-400 hover:text-gray-600'
+                            ? 'bg-white text-[#0e1b13] shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
                         <tab.icon size={14} /> {tab.label}
@@ -211,8 +214,8 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                                         type="button"
                                         onClick={() => setActForm({ ...actForm, categoria: c.id, tipo: '' })}
                                         className={`p-2 rounded-lg border flex flex-col items-center gap-1 transition-all ${actForm.categoria === c.id
-                                                ? 'bg-gray-50 border-gray-400 text-gray-900 shadow-sm'
-                                                : 'bg-white border-gray-100 text-gray-400 hover:bg-gray-50'
+                                            ? 'bg-gray-50 border-gray-400 text-gray-900 shadow-sm'
+                                            : 'bg-white border-gray-100 text-gray-400 hover:bg-gray-50'
                                             }`}
                                     >
                                         <c.icon size={18} />
@@ -233,7 +236,7 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                                             type="button"
                                             onClick={() => setActForm({ ...actForm, tipo: o.value })}
                                             className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-all ${actForm.tipo === o.value
-                                                    ? 'bg-gray-800 text-white border-gray-800 shadow'
+                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                                                     : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                                                 }`}
                                         >
@@ -259,7 +262,7 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                             </div>
                         </div>
 
-                        <button type="submit" disabled={!actForm.tipo} className="w-full py-3 bg-[#0e1b13] text-white font-bold rounded-xl hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all">
+                        <button type="submit" disabled={!actForm.tipo} className="w-full py-3 bg-[#19e66f] text-[#0e1b13] font-bold rounded-xl hover:bg-[#16cc62] disabled:opacity-50 disabled:cursor-not-allowed shadow transition-all transform active:scale-95">
                             GUARDAR ACTIVIDAD
                         </button>
                     </form>
@@ -307,8 +310,8 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                                         if (preset.duration) setPresetDuration(preset.duration);
                                     }}
                                     className={`p-3 rounded-lg border flex flex-col items-center gap-1 transition-all ${actionForm.label === preset.label
-                                            ? 'bg-yellow-50 border-yellow-400 text-yellow-900 shadow-sm'
-                                            : 'bg-white border-gray-100 text-gray-500 hover:border-gray-300'
+                                        ? 'bg-yellow-50 border-yellow-400 text-yellow-900 shadow-sm'
+                                        : 'bg-white border-gray-100 text-gray-500 hover:border-gray-300'
                                         }`}
                                 >
                                     <span className="text-xl">{preset.icon}</span>
