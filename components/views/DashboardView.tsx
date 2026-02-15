@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Brain, Activity, Sunrise, Sunset, Eye, EyeOff, Zap, Layers, Plus } from 'lucide-react';
+import { Clock, Brain, Activity, Sunrise, Sunset, Eye, EyeOff, Zap, Layers, Plus, ZoomIn, ZoomOut } from 'lucide-react';
 import { MetricCard, TurnoBar, SleepGauge } from '../UIComponents';
 import ChartCanvas from '../ChartCanvas';
 import { IDayData, IMetrics } from '../../types';
@@ -30,6 +30,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenTimeModal
 }) => {
   const [chartMode, setChartMode] = useState<'area' | 'lines'>('area');
+  const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100% width (fit), >1 = horizontal scroll
 
   // Manage visibility of individual lines for 'lines' mode
   const [visibleLines, setVisibleLines] = useState<Record<string, boolean>>(() => {
@@ -129,7 +130,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </div>
 
-            <div className="flex bg-gray-100 p-1 rounded-lg">
+            <div className="flex bg-gray-100 p-1 rounded-lg items-center gap-2">
+              {/* Mobile Zoom Control */}
+              <div className="md:hidden flex items-center gap-1 px-2 border-r border-gray-300 mr-1">
+                <ZoomOut size={14} className="text-gray-400" />
+                <input
+                  type="range"
+                  min="1" max="4" step="0.1"
+                  value={zoomLevel}
+                  onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                  className="w-16 h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-[#19e66f]"
+                />
+                <ZoomIn size={14} className="text-gray-400" />
+              </div>
+
               <button onClick={() => setChartMode('area')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${chartMode === 'area' ? 'bg-white shadow-sm text-[#0e1b13]' : 'text-gray-400'}`}>Área</button>
               <button onClick={() => setChartMode('lines')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${chartMode === 'lines' ? 'bg-white shadow-sm text-[#0e1b13]' : 'text-gray-400'}`}>Líneas</button>
             </div>
@@ -137,7 +151,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Chart - scrollable on mobile for visibility, with more width to breathe */}
           <div className="relative w-full overflow-x-auto md:overflow-visible pb-4 custom-scrollbar">
-            <div className="relative min-w-[1200px] md:min-w-0 md:w-full h-[450px] md:h-[550px]">
+            <div
+              className="relative h-[250px] md:h-[550px] transition-all duration-300 ease-out origin-left"
+              style={{ width: `${zoomLevel * 100}%`, minWidth: '100%' }}
+            >
               <ChartCanvas
                 data={currentData}
                 mode={chartMode}
