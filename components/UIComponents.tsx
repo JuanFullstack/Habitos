@@ -86,8 +86,8 @@ export const Modal: React.FC<ModalProps> = ({ onClose, children, maxWidth = "max
 
 interface MetricCardProps {
   title: string;
-  value: string;
-  detail?: string;
+  value: string | React.ReactNode;
+  detail?: string | React.ReactNode;
   color: string;
 }
 
