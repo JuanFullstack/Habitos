@@ -162,8 +162,8 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                         type="button"
                         onClick={() => setDuration(val)}
                         className={`text-[10px] font-bold px-3 py-1.5 rounded transition-all ${duration === val
-                                ? 'bg-[#19e66f] text-[#0e1b13] border border-[#19e66f] shadow-sm'
-                                : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
+                            ? 'bg-[#19e66f] text-[#0e1b13] border border-[#19e66f] shadow-sm'
+                            : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
                             }`}
                     >
                         {val === 0.25 ? '15m' : (val === 0.5 ? '30m' : val + 'h')}
@@ -236,8 +236,8 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                                             type="button"
                                             onClick={() => setActForm({ ...actForm, tipo: o.value })}
                                             className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-all ${actForm.tipo === o.value
-                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                                                 }`}
                                         >
                                             {o.label}
@@ -253,11 +253,11 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                                 placeholder="Descripción (Opcional)"
                                 value={actForm.desc} onChange={e => setActForm({ ...actForm, desc: e.target.value })} />
 
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" id="masterFlow" className="w-4 h-4 accent-[#19e66f] cursor-pointer"
+                            <div className="flex items-center gap-3 bg-gray-50/50 p-2 rounded-lg mb-3">
+                                <input type="checkbox" id="masterFlow" className="w-5 h-5 accent-[#19e66f] cursor-pointer rounded"
                                     checked={actForm.isFlow} onChange={e => setActForm({ ...actForm, isFlow: e.target.checked })} />
-                                <label htmlFor="masterFlow" className="text-xs font-bold text-gray-500 cursor-pointer select-none">
-                                    En paralelo (No corta anterior)
+                                <label htmlFor="masterFlow" className="text-sm font-bold text-gray-700 cursor-pointer select-none">
+                                    ¿Hubo Flujo?
                                 </label>
                             </div>
                         </div>

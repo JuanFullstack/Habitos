@@ -135,9 +135,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Chart - scrollable on mobile for visibility */}
-          <div className="relative w-full overflow-x-auto md:overflow-visible pb-2">
-            <div className="relative w-[700px] md:w-full h-[400px] md:h-[550px]">
+          {/* Chart - scrollable on mobile for visibility, with more width to breathe */}
+          <div className="relative w-full overflow-x-auto md:overflow-visible pb-4 custom-scrollbar">
+            <div className="relative min-w-[1200px] md:min-w-0 md:w-full h-[450px] md:h-[550px]">
               <ChartCanvas
                 data={currentData}
                 mode={chartMode}
