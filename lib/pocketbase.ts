@@ -53,9 +53,10 @@ async function _createCollection() {
         await pb.collections.create({
             name: COLLECTIONS.DAILY_LOGS,
             type: 'base',
+            system: false,
             schema: [
-                { name: 'date', type: 'text', required: true },
-                { name: 'content', type: 'json', required: true }
+                { name: 'date', type: 'text', system: false, required: true, options: { min: null, max: null, pattern: '' } },
+                { name: 'content', type: 'json', system: false, required: true, options: { maxSize: 2000000 } }
             ],
             listRule: '',
             viewRule: '',
