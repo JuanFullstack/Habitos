@@ -29,13 +29,13 @@ export const Header: React.FC<HeaderProps> = ({
   const isAuto = currentData.config.horaArranque === null;
 
   return (
-    <header className="sticky top-0 z-50 bg-[#f6f8f7]/80 backdrop-blur-md border-b border-[#e7f3ec] px-6 py-4">
+    <header className="sticky top-0 z-50 bg-[#f6f8f7]/80 backdrop-blur-md border-b border-[#e7f3ec] px-3 md:px-6 py-2.5 md:py-4">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center size-10 rounded-xl bg-[#19e66f]/20 text-[#12a850]">
-            <Activity size={24} />
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center justify-center size-8 md:size-10 rounded-xl bg-[#19e66f]/20 text-[#12a850]">
+            <Activity size={20} />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-[#0e1b13]">Bienestar<span className="text-[#19e66f]">OS</span></h1>
+          <h1 className="text-base md:text-xl font-bold tracking-tight text-[#0e1b13]">Bienestar<span className="text-[#19e66f]">OS</span></h1>
         </div>
 
         <nav className="hidden md:flex items-center gap-2 bg-white/50 p-1 rounded-lg">
@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           {syncStatus === 'saving' && <Loader className="animate-spin text-yellow-500" size={16} />}
           {syncStatus === 'synced' && <CheckCircle className="text-green-500" size={16} />}
           {syncStatus === 'error' && (
@@ -64,10 +64,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button onClick={onOpenTimeModal} className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#0e1b13] text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition">
             <PowerIcon /> {formatTime(effectiveStart)} {isAuto ? "(Auto)" : ""}
           </button>
-          <button onClick={onOpenDBSetup} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition shadow-sm" title="Configurar Base de Datos">
+          <button onClick={onOpenDBSetup} className="p-1.5 md:p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition shadow-sm" title="Configurar Base de Datos">
             <Database size={16} />
           </button>
-          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
+          <div className="hidden md:flex w-8 h-8 rounded-full bg-indigo-100 items-center justify-center text-indigo-700 font-bold text-xs">
             AD
           </div>
         </div>

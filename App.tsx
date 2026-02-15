@@ -228,21 +228,9 @@ export default function App() {
     );
   }, [db]);
 
-  // --- MOBILE RENDER ---
-  if (isMobile) {
-    return (
-      <MobileDashboardView
-        currentData={currentData}
-        metrics={metrics}
-        handlers={{ addActivity, addState, addEvent, toggleFlujo }}
-        db={db}
-      />
-    );
-  }
-
-  // --- DESKTOP RENDER ---
+  // --- UNIFIED RESPONSIVE RENDER ---
   return (
-    <div className="min-h-screen bg-[#f6f8f7] text-[#0e1b13] font-sans pb-10">
+    <div className="min-h-screen bg-[#f6f8f7] text-[#0e1b13] font-sans pb-24 md:pb-10">
 
       <Header
         activeTab={activeTab}
@@ -255,10 +243,10 @@ export default function App() {
         syncError={syncError}
       />
 
-      <div className="max-w-6xl mx-auto px-4 mt-8">
+      <div className="max-w-6xl mx-auto px-3 md:px-4 mt-4 md:mt-8">
 
         {/* TIME FILTER */}
-        <div className="flex flex-wrap gap-2 bg-white p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit mb-6 items-center">
+        <div className="flex flex-wrap gap-1.5 md:gap-2 bg-white p-1 md:p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit mb-4 md:mb-6 items-center overflow-x-auto">
           {TIME_RANGES.map(range => (
             <button
               key={range}
@@ -393,6 +381,32 @@ export default function App() {
           onClose={() => setShowDBSetup(false)}
         />
       )}
+
+      {/* --- MOBILE BOTTOM NAVIGATION --- */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/90 backdrop-blur-xl border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+            { id: 'registros', label: 'Registros', icon: '📋' },
+            { id: 'habitos', label: 'Hábitos', icon: '🎯' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-xl transition-all ${activeTab === tab.id
+                ? 'text-[#19e66f] scale-105'
+                : 'text-gray-400 active:scale-95'
+                }`}
+            >
+              <span className="text-xl">{tab.icon}</span>
+              <span className={`text-[10px] font-bold ${activeTab === tab.id ? 'text-[#0e1b13]' : 'text-gray-400'}`}>{tab.label}</span>
+              {activeTab === tab.id && (
+                <div className="w-4 h-1 bg-[#19e66f] rounded-full mt-0.5"></div>
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
 
     </div>
   );
