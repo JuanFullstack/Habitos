@@ -111,6 +111,8 @@ export const useBienestarData = () => {
     setSyncError(null);
 
     try {
+      await ensurePBReady(); // Re-check auth before saving
+
       // Check if exists
       try {
         const record = await pb.collection(COLLECTIONS.DAILY_LOGS).getFirstListItem(`date="${date}"`);

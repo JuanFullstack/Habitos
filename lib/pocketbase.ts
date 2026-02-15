@@ -16,7 +16,18 @@ export const COLLECTIONS = {
 // --- AUTO AUTH & COLLECTION SETUP ---
 let _initPromise: Promise<void> | null = null;
 
-export const ensurePBReady = (): Promise<void> => {
+export const ensurePBReady = async (): Promise<void> => {
+    // CRITICAL: Always check if we are authenticated as Admin before proceeding
+    if (PB_EMAIL && PB_PASS) {
+        if (!pb.authStore.isValid || !pb.authStore.isAdmin) {
+            console.log("[PB] 🔄 Auth invalid/expired, re-authenticating...");
+            // Force re-init (bypass singleton promise if auth is lost)
+            _initPromise = _initPB();
+            return _initPromise;
+        }
+    }
+
+    // Normal initialization (first run)
     if (!_initPromise) {
         _initPromise = _initPB();
     }
@@ -24,13 +35,18 @@ export const ensurePBReady = (): Promise<void> => {
 };
 
 async function _initPB() {
+    console.log(`[PB] Connecting to ${PB_URL}...`);
+
     // 1. Auth as Admin (if credentials available)
     if (PB_EMAIL && PB_PASS) {
         try {
+            // Clear previous potential bad state
+            pb.authStore.clear();
             await pb.admins.authWithPassword(PB_EMAIL, PB_PASS);
             console.log("[PB] ✅ Admin auth OK");
         } catch (e: any) {
-            console.warn("[PB] ⚠️ Admin auth failed:", e.message);
+            console.error("[PB] ❌ Admin auth failed:", e.message);
+            // Don't throw here, allowing app to try public access if configured
         }
     }
 
@@ -43,7 +59,7 @@ async function _initPB() {
             console.log("[PB] Collection not found, creating...");
             await _createCollection();
         } else {
-            console.warn("[PB] ⚠️ Collection check error:", e.message);
+            console.warn("[PB] ⚠️ Collection check error (might be permissions):", e.message);
         }
     }
 }
