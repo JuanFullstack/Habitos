@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Database } from 'lucide-react';
+import { Activity, Database, Loader, CheckCircle, CloudOff } from 'lucide-react';
 import { PowerIcon } from './UIComponents';
 import { formatTime, getEffectiveStartTime } from '../utils/calculations';
 import { IDayData } from '../types';
@@ -11,6 +11,8 @@ interface HeaderProps {
   toggleFlujo: () => void;
   onOpenTimeModal: () => void;
   onOpenDBSetup: () => void;
+  syncStatus?: 'idle' | 'saving' | 'synced' | 'error';
+  syncError?: string | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,7 +20,9 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   currentData,
   onOpenTimeModal,
-  onOpenDBSetup
+  onOpenDBSetup,
+  syncStatus = 'idle',
+  syncError
 }) => {
   // Calculate effective start time (deduced or manual)
   const effectiveStart = getEffectiveStartTime(currentData);
@@ -47,6 +51,16 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
 
         <div className="flex items-center gap-3">
+          {syncStatus === 'saving' && <Loader className="animate-spin text-yellow-500" size={16} />}
+          {syncStatus === 'synced' && <CheckCircle className="text-green-500" size={16} />}
+          {syncStatus === 'error' && (
+            <div className="relative group">
+              <CloudOff className="text-red-500 cursor-help" size={16} />
+              <div className="absolute top-full right-0 mt-2 bg-red-100 text-red-800 text-xs p-2 rounded w-48 hidden group-hover:block z-50 border border-red-200 shadow-md">
+                {syncError}
+              </div>
+            </div>
+          )}
           <button onClick={onOpenTimeModal} className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#0e1b13] text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition">
             <PowerIcon /> {formatTime(effectiveStart)} {isAuto ? "(Auto)" : ""}
           </button>

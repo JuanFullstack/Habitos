@@ -20,6 +20,8 @@ export const useBienestarData = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('HOY');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'synced' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // --- HELPER: LOAD DATA ---
   const loadDataFromCloud = async () => {
@@ -96,6 +98,9 @@ export const useBienestarData = () => {
     // 2. Persist to PocketBase (Async) - ONLY IF NOT SIMULATING
     if (isSimulationMode) return;
 
+    setSyncStatus('saving');
+    setSyncError(null);
+
     try {
       // Check if exists
       try {
@@ -106,8 +111,12 @@ export const useBienestarData = () => {
           await pb.collection(COLLECTIONS.DAILY_LOGS).create({ date, content: newData });
         } else { throw e; }
       }
-    } catch (err) {
+      setSyncStatus('synced');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    } catch (err: any) {
       console.error(`Failed to sync ${date} to Cloud:`, err);
+      setSyncStatus('error');
+      setSyncError(err.message || "Error de sincronización");
     }
   };
 
@@ -346,6 +355,8 @@ export const useBienestarData = () => {
     timeRange,
     setTimeRange,
     isSyncing,
+    syncStatus,
+    syncError,
     updateDayData,
     addActivity,
     addState,

@@ -23,7 +23,7 @@ export default function App() {
   const {
     db, currentData, currentDate, setCurrentDate, timeRange, setTimeRange,
     updateDayData, addActivity, addState, addEvent, deleteItem, resetData,
-    handleSimulate, toggleFlujo, revertSimulation
+    handleSimulate, toggleFlujo, revertSimulation, syncStatus, syncError
   } = useBienestarData();
 
   // --- MOBILE DETECTION ---
@@ -251,6 +251,8 @@ export default function App() {
         toggleFlujo={toggleFlujo}
         onOpenTimeModal={() => { setTimeModalType('arranque'); setTempTime(currentData.config.horaArranque || 7); }}
         onOpenDBSetup={() => setShowDBSetup(true)}
+        syncStatus={syncStatus}
+        syncError={syncError}
       />
 
       <div className="max-w-6xl mx-auto px-4 mt-8">
