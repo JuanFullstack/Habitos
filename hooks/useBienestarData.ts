@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { INITIAL_DAY_DATA } from '../constants';
 import { Database, IDayData, IActivity, IStatePoint, IEvent, TimeRange } from '../types';
 import { getTodayStr, aggregateData, simulateData, roundOne, checkOverlap, checkStateOverlap, calculateScore } from '../utils/calculations';
-import { pb, COLLECTIONS } from '../lib/pocketbase';
+import { pb, COLLECTIONS, ensurePBReady } from '../lib/pocketbase';
 
 export const useBienestarData = () => {
   const [db, setDb] = useState<Database>(() => {
@@ -27,6 +27,8 @@ export const useBienestarData = () => {
   const loadDataFromCloud = async () => {
     try {
       setIsSyncing(true);
+      // Ensure PB is authenticated & collection exists
+      await ensurePBReady();
       // Load last 50 days
       const records = await pb.collection(COLLECTIONS.DAILY_LOGS).getList(1, 50, {
         sort: '-date',
@@ -46,8 +48,15 @@ export const useBienestarData = () => {
           return merged;
         });
       }
-    } catch (err) {
-      console.error("Offline or Error loading from DB:", err);
+      setSyncStatus('synced');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    } catch (err: any) {
+      // 404 means collection not created yet -> Ignore
+      if (err.status !== 404) {
+        console.error("Offline or Error loading from DB:", err);
+        setSyncStatus('error');
+        setSyncError("Error de Conexión/Permisos");
+      }
     } finally {
       setIsSyncing(false);
     }

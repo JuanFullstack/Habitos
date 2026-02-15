@@ -22,9 +22,27 @@ export const DBSetupModal: React.FC<DBSetupModalProps> = ({ onClose, localDB }) 
         addLog("Iniciando conexión a PocketBase...");
 
         try {
+            // 0. Connection Check
+            try {
+                const health = await pb.health.check();
+                addLog(`✅ Servidor en línea (v${health.code || '?'}).`);
+            } catch (e: any) {
+                // If health check fails with 404, it might be an old version or path issue, but usually it's connection.
+                // However, "The requested resource wasn't found" (404) suggests the server is reachable but the path is wrong.
+                // Let's log it but try to proceed, or throw if critical.
+                addLog(`⚠️ Advertencia de conexión: ${e.message}`);
+            }
+
             // 1. Auth as Admin
-            await pb.admins.authWithPassword(email, password);
-            addLog("✅ Autenticación de Admin exitosa.");
+            addLog("🔑 Autenticando como Administrador...");
+            try {
+                await pb.admins.authWithPassword(email, password);
+                addLog("✅ Autenticación exitosa.");
+            } catch (e: any) {
+                if (e.status === 404) throw new Error("No se encontró el endpoint de autenticación. ¿Estás seguro de que la URL del servidor es correcta?");
+                if (e.status === 400) throw new Error("Credenciales inválidas.");
+                throw e;
+            }
 
             setStatus('creating');
             // 2. Check/Create Collection
@@ -44,23 +62,21 @@ export const DBSetupModal: React.FC<DBSetupModalProps> = ({ onClose, localDB }) 
                         {
                             name: 'date',
                             type: 'text',
-                            required: true,
-                            unique: true,
-                            options: { min: 10, max: 10, pattern: '' }
+                            required: true
+                            // unique removed temporarily
                         },
                         {
                             name: 'content',
                             type: 'json',
-                            required: true,
-                            options: {}
+                            required: true
                         }
                     ],
                     listRule: '',
                     viewRule: '',
                     createRule: '',
                     updateRule: '',
-                    deleteRule: '',
-                    conversation: false // Disable comments
+                    deleteRule: ''
+                    // conversation: false removed (not available in older versions?)
                 });
                 addLog("✅ Colección creada exitosamente.");
             }
