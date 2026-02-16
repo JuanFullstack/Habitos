@@ -19,7 +19,7 @@ export const useBienestarData = () => {
   const [currentDate, setCurrentDate] = useState(getTodayStr());
   const [timeRange, setTimeRange] = useState<TimeRange>('HOY');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const [isSimulationMode, setIsSimulationMode] = useState(() => localStorage.getItem('isSimulationMode') === 'true');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -139,7 +139,8 @@ export const useBienestarData = () => {
     saveDayData(targetDate, newData);
   };
 
-  const addActivity = (form: any, editingId: string | null) => {
+  const addActivity = (form: any, editingId: string | number | null) => {
+    const safeEditingId = editingId ? editingId.toString() : null;
     const currentDataSnapshot = getEditableDay();
     const now = new Date();
     const currentDecimal = now.getHours() + now.getMinutes() / 60;
@@ -148,13 +149,13 @@ export const useBienestarData = () => {
     const fin = form.fin ? parseFloat(form.fin) : currentDecimal + 1;
 
     // Validation (skip if editing same ID logic needs refining but basic overlap check is here)
-    if (checkOverlap(inicio, fin, currentDataSnapshot.actividades, editingId)) {
+    if (checkOverlap(inicio, fin, currentDataSnapshot.actividades, safeEditingId)) {
       throw new Error("¡Conflicto de horario! Ya existe una actividad en ese rango.");
     }
 
     const duration = fin - inicio;
     const score = calculateScore(form.categoria, duration);
-    const newId = (editingId || (Date.now() + Math.random()).toString());
+    const newId = (safeEditingId || (Date.now() + Math.random()).toString());
 
     const mainActivity: IActivity = {
       id: newId,
@@ -196,7 +197,14 @@ export const useBienestarData = () => {
       });
     }
 
-    saveDayData(targetDate, { ...currentDataSnapshot, actividades: updatedActivities });
+    // First Record Logic
+    let newConfig = { ...currentDataSnapshot.config };
+    const dayIsEmpty = currentDataSnapshot.actividades.length === 0 && currentDataSnapshot.estados.length === 0 && currentDataSnapshot.eventos.length === 0;
+    if (dayIsEmpty && !editingId) {
+      newConfig.horaArranque = typeof inicio === 'number' ? inicio : parseFloat(inicio);
+    }
+
+    saveDayData(targetDate, { ...currentDataSnapshot, actividades: updatedActivities, config: newConfig });
   };
 
   const addState = (form: any, editingId: string | number | null) => {
@@ -217,6 +225,7 @@ export const useBienestarData = () => {
       t: inicio, fin: fin,
       v: parseInt(form.energia.toString()),
       contexto: form.contexto,
+      preset: form.preset,
       ...form.variables, // Spread directly as keys match (Ri, Voluntad, etc.) and are 0-100
     };
 
@@ -225,7 +234,14 @@ export const useBienestarData = () => {
       ? currentDataSnapshot.estados.map(s => s.id === editingId ? newEstado : s).sort((a, b) => a.t - b.t)
       : [...currentDataSnapshot.estados, newEstado].sort((a, b) => a.t - b.t);
 
-    saveDayData(targetDate, { ...currentDataSnapshot, estados: updatedStates });
+    // First Record Logic
+    let newConfig = { ...currentDataSnapshot.config };
+    const dayIsEmpty = currentDataSnapshot.actividades.length === 0 && currentDataSnapshot.estados.length === 0 && currentDataSnapshot.eventos.length === 0;
+    if (dayIsEmpty && !editingId) {
+      newConfig.horaArranque = inicio;
+    }
+
+    saveDayData(targetDate, { ...currentDataSnapshot, estados: updatedStates, config: newConfig });
   };
 
   const addEvent = (eventData: { icon: string; label: string; t?: number; fin?: number; descripcion?: string }) => {
@@ -243,7 +259,15 @@ export const useBienestarData = () => {
     };
 
     const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
-    saveDayData(targetDate, { ...currentDataSnapshot, eventos: [...currentDataSnapshot.eventos, newEvent] });
+    // First Record Logic
+    let newConfig = { ...currentDataSnapshot.config };
+    const dayIsEmpty = currentDataSnapshot.actividades.length === 0 && currentDataSnapshot.estados.length === 0 && currentDataSnapshot.eventos.length === 0;
+    // For Events, use 't' as start
+    if (dayIsEmpty) { // Events rarely edited by ID in this context, but safe to check
+      newConfig.horaArranque = newEvent.t;
+    }
+
+    saveDayData(targetDate, { ...currentDataSnapshot, eventos: [...currentDataSnapshot.eventos, newEvent], config: newConfig });
   };
 
   const deleteItem = (type: 'actividades' | 'estados' | 'eventos', id: string | number) => {
@@ -264,7 +288,27 @@ export const useBienestarData = () => {
     saveDayData(targetDate, { ...currentDataSnapshot, [type]: filteredList });
   };
 
+  const purgeDatabase = async () => {
+    setIsSyncing(true);
+    try {
+      setDb({});
+      localStorage.removeItem('bienestarDB');
+      const records = await pb.collection(COLLECTIONS.DAILY_LOGS).getFullList();
+      await Promise.all(records.map(r => pb.collection(COLLECTIONS.DAILY_LOGS).delete(r.id)));
+      setSyncStatus('synced');
+    } catch (e) {
+      console.error("Error purging DB:", e);
+      setSyncStatus('error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const resetData = (section: string) => {
+    if (section === 'global') {
+      purgeDatabase();
+      return;
+    }
     const currentDataSnapshot = getEditableDay();
     const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
     const empty = JSON.parse(JSON.stringify(INITIAL_DAY_DATA));
@@ -280,6 +324,7 @@ export const useBienestarData = () => {
 
   const handleSimulate = () => {
     setIsSimulationMode(true);
+    localStorage.setItem('isSimulationMode', 'true');
     const newDb = simulateData(db);
 
     // Update local state ONLY - DO NOT SYNC TO CLOUD
@@ -287,10 +332,12 @@ export const useBienestarData = () => {
     localStorage.setItem('bienestarDB', JSON.stringify(newDb));
   };
 
-  const revertSimulation = () => {
+  const revertSimulation = async () => {
     setIsSimulationMode(false);
-    // Reload real data from Cloud
-    loadDataFromCloud();
+    localStorage.removeItem('isSimulationMode');
+    setDb({});
+    localStorage.removeItem('bienestarDB');
+    await loadDataFromCloud();
   };
 
   const handleImport = (json: string) => {

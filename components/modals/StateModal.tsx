@@ -7,8 +7,8 @@ import { TimeRange } from '../../types';
 interface StateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  form: { energia: number; contexto: string; expNegativa: boolean; variables: any; inicio: string; fin: string };
-  setForm: React.Dispatch<React.SetStateAction<{ energia: number; contexto: string; expNegativa: boolean; variables: any; inicio: string; fin: string }>>;
+  form: { energia: number; contexto: string; expNegativa: boolean; variables: any; inicio: string; fin: string; preset?: string };
+  setForm: React.Dispatch<React.SetStateAction<{ energia: number; contexto: string; expNegativa: boolean; variables: any; inicio: string; fin: string; preset?: string }>>;
   onSubmit: (e?: React.FormEvent) => void;
   isEditing: boolean;
   onVarChange: (key: string, val: string) => void;
@@ -101,7 +101,8 @@ export const StateModal: React.FC<StateModalProps> = ({
       ...prev,
       energia: preset.v !== null ? preset.v : prev.energia,
       contexto: preset.contexto === 'AGGREGATE' ? (prev.contexto || '') : (preset.contexto || ''),
-      variables: newVariables
+      variables: newVariables,
+      preset: preset.label // Save preset name
     }));
   };
 
@@ -114,7 +115,9 @@ export const StateModal: React.FC<StateModalProps> = ({
     <Modal onClose={onClose} maxWidth="max-w-5xl">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-[#0e1b13] mb-1">{isCreateMode ? 'Nuevo Tipo de Estado' : (isEditing ? 'Editar Estado' : 'Nuevo Estado')}</h2>
+          <h2 className="text-3xl font-black tracking-tight text-[#0e1b13] mb-1">
+            {isCreateMode ? 'Nuevo Tipo de Estado' : (isEditing ? `Editar: ${form.preset || 'Estado'}` : 'Nuevo Estado')}
+          </h2>
           <p className="text-[#4e976d] text-sm">{isCreateMode ? 'Define el nombre y las variables para este estado reutilizable.' : 'Selecciona una configuración estándar o personaliza.'}</p>
         </div>
         {!isCreateMode && (
@@ -139,7 +142,7 @@ export const StateModal: React.FC<StateModalProps> = ({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* PRESETS & TIME (Hidden in Create Mode) */}
+        {/* PRESETS GRID (Visible in Standard Mode - Create Record or Edit Record) */}
         {!isCreateMode && (
           <div className="lg:col-span-12 space-y-4">
             {/* PRESETS GRID */}
@@ -192,8 +195,12 @@ export const StateModal: React.FC<StateModalProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        )}
 
-            {/* TIME & CONTEXT */}
+        {/* TIME & CONTEXT (Visible unless Creating Preset) */}
+        {!isCreateMode && (
+          <div className="lg:col-span-12 space-y-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-4">
                 <Clock size={20} className="text-indigo-400" />

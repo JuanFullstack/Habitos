@@ -11,10 +11,11 @@ interface MasterModalProps {
     onClose: () => void;
     currentData: IDayData;
     handlers: {
-        addActivity: (form: any, id: null) => void;
-        addState: (form: any, id: null) => void;
-        addEvent: (data: any) => void;
+        addActivity: (form: any, id: string | number | null) => void;
+        addState: (form: any, id: string | number | null) => void;
+        addEvent: (data: any, id: string | number | null) => void;
     };
+    editData?: { type: 'actividad' | 'estado' | 'accion', data: any } | null;
 }
 
 const ACTION_PRESETS = [
@@ -25,7 +26,9 @@ const ACTION_PRESETS = [
     { label: 'Negativo', icon: '⛔', duration: 0.1 }
 ];
 
-export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, currentData, handlers }) => {
+
+
+export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, currentData, handlers, editData }) => {
     const [activeTab, setActiveTab] = useState<'actividad' | 'estado' | 'accion'>('actividad');
 
     // --- UNIFIED TIME STATE ---
@@ -35,7 +38,7 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
     // Forms
     // Forms
     const [actForm, setActForm] = useState({ categoria: '', tipo: '', desc: '', isFlow: false });
-    const [stForm, setStForm] = useState({ energia: 75, variables: {} as any, contexto: '' });
+    const [stForm, setStForm] = useState({ energia: 75, variables: {} as any, contexto: '', preset: '' });
     const [actionForm, setActionForm] = useState({ label: '', icon: '', desc: '' });
 
     // Preset States
@@ -45,13 +48,73 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
     const [newPresetName, setNewPresetName] = useState('');
 
     useEffect(() => {
+        if (isOpen && editData) {
+            // EDIT MODE INITIALIZATION
+            setActiveTab(editData.type);
+            const d = editData.data;
+
+            // Common Time Calculation
+            const start = d.inicio || d.t || 7.0;
+            const end = d.fin || (start + 1.0);
+            setBaseTime(parseFloat(start));
+            setDuration(parseFloat(end) - parseFloat(start));
+
+            if (editData.type === 'actividad') {
+                setActForm({
+                    categoria: d.categoria,
+                    tipo: d.tipo,
+                    desc: d.descripcion || '',
+                    isFlow: d.tipo === 'sesion_flujo' // approximation
+                });
+            } else if (editData.type === 'estado') {
+                // Populate State Form (Variables, Preset, etc.)
+                const vars: any = {};
+                // Populate vars from d (which maps to IStatePoint keys)
+                VARIABLES_EMOCIONALES.forEach(v => {
+                    if (d[v] !== undefined) vars[v] = d[v];
+                    else vars[v] = 0;
+                });
+                setStForm({
+                    energia: d.v || d.Energía || 50,
+                    variables: vars,
+                    contexto: d.contexto || '',
+                    preset: d.preset || '' // Load preset name
+                });
+            } else if (editData.type === 'accion') {
+                setActionForm({
+                    label: d.label,
+                    icon: d.icon,
+                    desc: d.descripcion || ''
+                });
+            }
+
+        } else if (isOpen) {
+            // CREATE MODE (Existing Logic)
+            const getEnd = (list: any[]) => {
+                if (!list || list.length === 0) return 0;
+                const last = list[list.length - 1];
+                let endTime = last.fin;
+                if (endTime === undefined || endTime === null) {
+                    endTime = last.t + 1;
+                }
+                return parseFloat(endTime);
+            };
+            const t1 = getEnd(currentData.actividades);
+            const t2 = getEnd(currentData.estados);
+            const t3 = getEnd(currentData.eventos);
+            const max = Math.max(t1, t2, t3);
+            setBaseTime(max > 0 ? max : (currentData.config?.horaArranque || 7.0));
+            // Reset Forms
+            setStForm(prev => ({ ...prev, preset: '', contexto: '' }));
+            const vars: any = {};
+            VARIABLES_EMOCIONALES.forEach(v => vars[v] = 0);
+            setStForm(prev => ({ ...prev, variables: vars }));
+        }
+    }, [isOpen, editData, currentData]);
+
+    useEffect(() => {
         const saved = localStorage.getItem('customStatePresets');
         if (saved) { try { setCustomPresets(JSON.parse(saved)); } catch (e) { console.error(e); } }
-
-        // Init Vars
-        const vars: any = {};
-        VARIABLES_EMOCIONALES.forEach(v => vars[v] = 0);
-        setStForm(prev => ({ ...prev, variables: vars }));
     }, []);
 
     const savePreset = () => {
@@ -107,30 +170,15 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
 
         setStForm(prev => ({
             ...prev,
-            energia: preset.v !== null ? preset.v : prev.energia,
-            contexto: preset.contexto === 'AGGREGATE' ? (prev.contexto || '') : (preset.contexto || ''),
-            variables: newVariables
+            energia: preset.v,
+            variables: newVariables,
+            contexto: preset.contexto === 'AGGREGATE' ? prev.contexto : (preset.contexto || ''),
+            preset: preset.label
         }));
     };
 
     // AUTO-CALC START TIME
-    useEffect(() => {
-        if (!isOpen) return;
 
-        const getLastTime = (list: any[]) => {
-            if (!list || list.length === 0) return 7.0;
-            const last = list[list.length - 1];
-            if (last.fin !== undefined) return parseFloat(last.fin);
-            return parseFloat(last.t) + (last.duration || 0);
-        };
-
-        let nextStart = 7.0;
-        if (currentData.actividades.length > 0) nextStart = getLastTime(currentData.actividades);
-        else if (currentData.estados.length > 0) nextStart = getLastTime(currentData.estados);
-
-        setBaseTime(nextStart);
-        setDuration(1.0);
-    }, [isOpen, currentData]);
 
     // Derived End Time
     const endTime = useMemo(() => baseTime + duration, [baseTime, duration]);
@@ -156,7 +204,7 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 color: catObj?.color,
                 inicio: baseTime.toFixed(1),
                 fin: endTime.toFixed(1)
-            }, null);
+            }, editData?.type === 'actividad' ? editData.data.id : null);
 
             setActForm(prev => ({ ...prev, desc: '', isFlow: false, categoria: '', tipo: '' }));
             onClose();
@@ -170,7 +218,7 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 ...stForm,
                 inicio: baseTime.toFixed(1),
                 fin: endTime.toFixed(1)
-            }, null);
+            }, editData?.type === 'estado' ? editData.data.id : null);
             onClose();
         } catch (err: any) { alert(err.message); }
     };
@@ -184,7 +232,7 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 t: baseTime,
                 fin: endTime,
                 descripcion: actionForm.desc
-            });
+            }, editData?.type === 'accion' ? editData.data.id : null);
 
             setActionForm(prev => ({ ...prev, label: '', icon: '', desc: '' }));
             onClose();
@@ -513,8 +561,8 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                         )}
 
                         <button type="submit" disabled={!actionForm.label || (actionForm.label === 'Negativo' && !actionForm.desc.trim())}
-                            className="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                            GUARDAR ACCIÓN
+                            className="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                            <Save size={20} />   {editData ? 'Actualizar' : 'Guardar Registro'}
                         </button>
                     </form>
                 )}

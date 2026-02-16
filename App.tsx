@@ -40,6 +40,7 @@ export default function App() {
 
   // UI State
   const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [editData, setEditData] = useState<{ type: 'actividad' | 'estado' | 'accion', data: any } | null>(null);
   const [timeModalType, setTimeModalType] = useState<'arranque' | 'finDia' | 'horasSueno' | null>(null);
   const [tempTime, setTempTime] = useState(7.0);
 
@@ -53,8 +54,8 @@ export default function App() {
 
   // Form State
   const [formActividad, setFormActividad] = useState({ categoria: '', tipo: '', desc: '', inicio: '', fin: '', isFlow: false });
-  const [formEstado, setFormEstado] = useState<{ energia: number, contexto: string, expNegativa: boolean, variables: any, inicio: string, fin: string }>({
-    energia: 75, contexto: '', variables: {}, expNegativa: false, inicio: '', fin: ''
+  const [formEstado, setFormEstado] = useState<{ energia: number, contexto: string, expNegativa: boolean, variables: any, inicio: string, fin: string, preset?: string }>({
+    energia: 75, contexto: '', variables: {}, expNegativa: false, inicio: '', fin: '', preset: ''
   });
 
   // State for Action Modal default time (since ActionModal handles its own form state)
@@ -68,17 +69,23 @@ export default function App() {
     setFormEstado(prev => ({ ...prev, variables: initialVars }));
   }, []);
 
-  // --- HELPER: Get Last End Time ---
-  const getLastEndTime = (list: any[]) => {
-    if (!list || list.length === 0) return 7.0;
-    const last = list[list.length - 1];
-    // Activity has 'fin', State has 'fin' (or 't' + duration), Event has 'fin' (or 't')
-    // Safely calculate end time
-    let endTime = last.fin;
-    if (endTime === undefined || endTime === null) {
-      endTime = last.t + 1; // Default duration 1h if no fin
-    }
-    return parseFloat(endTime);
+  // --- HELPER: Get Global Last End Time ---
+  const getGlobalLastTime = () => {
+    const getEnd = (list: any[]) => {
+      if (!list || list.length === 0) return 0;
+      const last = list[list.length - 1];
+      let endTime = last.fin;
+      if (endTime === undefined || endTime === null) {
+        endTime = last.t + 1;
+      }
+      return parseFloat(endTime);
+    };
+
+    const t1 = getEnd(currentData.actividades);
+    const t2 = getEnd(currentData.estados);
+    const t3 = getEnd(currentData.eventos);
+    const max = Math.max(t1, t2, t3);
+    return max > 0 ? max : (currentData.config?.horaArranque || 7.0);
   };
 
   // --- HANDLERS ---
@@ -114,26 +121,14 @@ export default function App() {
   };
 
   const handlePrepareEditActivity = (act: IActivity) => {
-    setEditingId(act.id);
-
-    // Check if a linked flow activity exists (convention: ID + '-flow')
-    const hasLinkedFlow = currentData.actividades.some(a => a.id === `${act.id}-flow`);
-
-    setFormActividad({
-      categoria: act.categoria,
-      tipo: act.tipo,
-      desc: act.descripcion || '',
-      inicio: act.inicio.toString(),
-      fin: act.fin.toString(),
-      isFlow: hasLinkedFlow // Pre-fill based on existing data
-    });
-    setShowActModal(true);
+    setEditData({ type: 'actividad', data: act });
+    setShowMasterModal(true);
   };
 
   // OPEN NEW ACTIVITY - AUTO FILL TIME
   const handleOpenNewActivity = () => {
     setEditingId(null);
-    const startTime = getLastEndTime(currentData.actividades);
+    const startTime = getGlobalLastTime();
     setFormActividad({
       categoria: '', tipo: '', desc: '',
       inicio: startTime.toFixed(1),
@@ -165,47 +160,26 @@ export default function App() {
   };
 
   const handlePrepareEditState = (st: IStatePoint) => {
-    setEditingId(st.id);
-    const { id, t, v, contexto, expNegativa, ...vars } = st;
-    const fromPct = (val: number) => Math.round((val / 100) * 5);
-
-    const uiVars: any = {};
-    VARIABLES_EMOCIONALES.forEach(key => {
-      uiVars[key] = fromPct(st[key] || 0);
-    });
-
-    setFormEstado({
-      energia: v,
-      contexto: contexto || 'Normal',
-      expNegativa: false,
-      variables: uiVars,
-      inicio: t.toString(),
-      fin: st.fin ? st.fin.toString() : (t + 1).toString()
-    });
-    setShowStateModal(true);
+    setEditData({ type: 'estado', data: st });
+    setShowMasterModal(true);
   };
 
   // OPEN NEW STATE - AUTO FILL TIME
   const handleOpenNewState = () => {
     setEditingId(null);
-    const startTime = getLastEndTime(currentData.estados);
+    const startTime = getGlobalLastTime();
     setFormEstado(prev => ({
       ...prev,
       inicio: startTime.toFixed(1),
-      fin: (startTime + 1).toFixed(1)
+      fin: (startTime + 1).toFixed(1),
+      preset: ''
     }));
     setShowStateModal(true);
   };
 
   // OPEN NEW ACTION - AUTO FILL TIME
   const handleOpenNewAction = () => {
-    // Logic: If there are events, use last event time. If not, use last Activity time.
-    let startTime = 7.0;
-    if (currentData.eventos.length > 0) {
-      startTime = getLastEndTime(currentData.eventos);
-    } else {
-      startTime = getLastEndTime(currentData.actividades);
-    }
+    const startTime = getGlobalLastTime();
     setActionInitialTime(startTime);
     setShowActionModal(true);
   };
@@ -229,6 +203,34 @@ export default function App() {
       (day.estados && day.estados.length > 0)
     );
   }, [db]);
+
+  // HANDLER FOR TIME MODAL SUBMIT
+  const handleTimeSubmit = (time: number) => {
+    let newConfig = { ...currentData.config };
+    if (timeModalType === 'arranque') newConfig.horaArranque = time;
+    else if (timeModalType === 'finDia') newConfig.finDia = time;
+    else if (timeModalType === 'horasSueno') newConfig.horasSueno = time;
+
+    updateDayData({ ...currentData, config: newConfig });
+    setTimeModalType(null);
+
+    // AUTO-OPEN MASTER MODAL if setting start time for the first time (empty day)
+    const isEmpty = currentData.actividades.length === 0 && currentData.estados.length === 0 && currentData.eventos.length === 0;
+    if (timeModalType === 'arranque' && isEmpty) {
+      setShowMasterModal(true);
+    }
+  };
+
+  // HANDLER FOR NEW RECORD (Intercepts to ask for Start Time)
+  const handlePlusClick = () => {
+    const isEmpty = currentData.actividades.length === 0 && currentData.estados.length === 0 && currentData.eventos.length === 0;
+    if (isEmpty && !currentData.config.horaArranque) {
+      setTimeModalType('arranque');
+      setTempTime(7.0);
+      return;
+    }
+    setShowMasterModal(true);
+  };
 
   // --- UNIFIED RESPONSIVE RENDER ---
   return (
@@ -270,7 +272,7 @@ export default function App() {
 
           {/* QUICK ADD BUTTON */}
           <button
-            onClick={() => setShowMasterModal(true)}
+            onClick={handlePlusClick}
             className="bg-[#0e1b13] text-white p-2.5 rounded-xl shadow-lg hover:bg-black transition-transform active:scale-95 flex items-center justify-center min-w-[40px]"
           >
             <Plus size={20} strokeWidth={3} />
@@ -286,7 +288,7 @@ export default function App() {
             onOpenStateModal={handleOpenNewState}
             onOpenActionModal={handleOpenNewAction}
             onOpenFlowModal={() => { }}
-            onOpenMasterModal={() => setShowMasterModal(true)}
+            onOpenMasterModal={handlePlusClick}
             onOpenTimeModal={(type) => {
               setTimeModalType(type);
               let initialTime = 7.0;
@@ -371,13 +373,14 @@ export default function App() {
 
       <MasterModal
         isOpen={showMasterModal}
-        onClose={() => setShowMasterModal(false)}
+        onClose={() => { setShowMasterModal(false); setEditData(null); }}
         currentData={currentData}
         handlers={{
           addActivity: addActivity,
           addState: addState,
           addEvent: addEvent
         }}
+        editData={editData}
       />
 
       <DateModal
@@ -387,6 +390,16 @@ export default function App() {
         onSelectDate={(date) => setCurrentDate(date)}
         recordedDates={Object.keys(db)}
       />
+
+      {timeModalType && (
+        <TimeModal
+          isOpen={true}
+          onClose={() => setTimeModalType(null)}
+          type={timeModalType}
+          initialTime={tempTime}
+          onConfirm={handleTimeSubmit}
+        />
+      )}
 
       {showDBSetup && (
         <DBSetupModal
