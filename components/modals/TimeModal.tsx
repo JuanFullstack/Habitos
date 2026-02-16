@@ -10,10 +10,10 @@ interface TimeModalProps {
 }
 
 export const TimeModal: React.FC<TimeModalProps> = ({ isOpen, onClose, type, initialTime = 7.0, onConfirm }) => {
-  const [val, setVal] = useState(initialTime);
+  const [strVal, setStrVal] = useState(initialTime.toString());
 
   useEffect(() => {
-    if (isOpen) setVal(initialTime || 7.0);
+    if (isOpen) setStrVal(initialTime?.toString() || "7.0");
   }, [isOpen, initialTime]);
 
   if (!isOpen || !type) return null;
@@ -28,14 +28,22 @@ export const TimeModal: React.FC<TimeModalProps> = ({ isOpen, onClose, type, ini
   };
 
   const getHelper = () => {
-    if (type === 'horasSueno') return 'Ej: 7.5 para 7 horas y media';
+    if (type === 'horasSueno') return 'Ej: 7.5 o 7,5';
     return 'Ej: 8.5 para 08:30';
   };
 
   const handleUseCurrentTime = () => {
     const now = new Date();
     const decimal = now.getHours() + now.getMinutes() / 60;
-    setVal(parseFloat(decimal.toFixed(2)));
+    setStrVal(decimal.toFixed(2));
+  };
+
+  const handleConfirm = () => {
+    const sanitized = strVal.replace(',', '.');
+    const num = parseFloat(sanitized);
+    if (!isNaN(num)) {
+      onConfirm(num);
+    }
   };
 
   return (
@@ -48,11 +56,12 @@ export const TimeModal: React.FC<TimeModalProps> = ({ isOpen, onClose, type, ini
             {type === 'horasSueno' ? 'Duración (Horas)' : 'Hora (Decimal)'}
           </label>
           <input
-            type="number"
-            step="0.1"
+            type="text"
+            inputMode="decimal"
+            placeholder="0.0"
             className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-lg font-bold text-center text-[#0e1b13] focus:ring-2 focus:ring-[#19e66f]"
-            value={val}
-            onChange={(e) => setVal(parseFloat(e.target.value))}
+            value={strVal}
+            onChange={(e) => setStrVal(e.target.value)}
           />
           <p className="text-center text-xs text-gray-400 mt-1">{getHelper()}</p>
         </div>
@@ -73,7 +82,7 @@ export const TimeModal: React.FC<TimeModalProps> = ({ isOpen, onClose, type, ini
             Cancelar
           </button>
           <button
-            onClick={() => onConfirm(val)}
+            onClick={handleConfirm}
             className="flex-1 py-3 bg-[#19e66f] text-[#0e1b13] font-bold rounded-xl shadow-lg shadow-[#19e66f]/20 hover:bg-[#12a850] transition-all transform active:scale-95"
           >
             Confirmar
