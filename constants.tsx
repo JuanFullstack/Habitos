@@ -29,7 +29,7 @@ export const CONFIG = {
 
 export const STATE_PRESETS = [
   { label: 'Normal', v: 60, energia: 60, ri: 40, voluntad: 60, distraccion: 30, horus: 50, afectacion: 50, nc: 40, di: 60, vision: 60, contexto: '', duration: 'Manual' },
-  { label: 'Flujo', v: 100, energia: 60, ri: 0, voluntad: 100, distraccion: 0, horus: 100, afectacion: 0, nc: 100, di: 100, vision: 100, contexto: '', duration: 'Manual' },
+  { label: 'Flujo', v: 80, energia: 80, ri: 0, voluntad: 80, distraccion: 0, horus: 80, afectacion: 0, nc: 80, di: 80, vision: 80, contexto: '', duration: 'Manual' },
   { label: 'Bajón de energía', v: 30, energia: 60, ri: 70, voluntad: 30, distraccion: 70, horus: 30, afectacion: 70, nc: 70, di: 40, vision: 40, contexto: 'AGGREGATE', duration: 'Manual' },
   { label: 'Enojado', v: 30, energia: 60, ri: 40, voluntad: 60, distraccion: 30, horus: 40, afectacion: 80, nc: 80, di: 40, vision: 40, contexto: 'AGGREGATE', duration: 'Manual' },
   { label: 'Cansado mental', v: 40, energia: 50, ri: 40, voluntad: 60, distraccion: 70, horus: 50, afectacion: 60, nc: 40, di: 40, vision: 10, contexto: '', duration: 'Manual' },

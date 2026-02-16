@@ -307,14 +307,20 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                     fin: (baseTime + dur).toFixed(1)
                 }, null);
 
-                // Add State: Flujo (only for Meditation)
-                if (isMed) {
+                // Add State: Flujo (Meditation) or Normal (Reflexion)
+                if (isMed || isRef) {
+                    const stPreset = isMed ? 'Flujo' : 'Normal';
+                    const stEnergy = isMed ? 80 : 60; // Normal energy ~60
+                    const stVars = isMed
+                        ? { Voluntad: 80, Vision: 80, Horus: 80, NC: 80 }
+                        : { Ri: 40, Voluntad: 60, Vision: 60 }; // Normal defaults
+
                     handlers.addState({
-                        preset: 'Flujo',
-                        energia: 100, // Flujo usually High
+                        preset: stPreset,
+                        energia: stEnergy,
                         inicio: baseTime.toFixed(1),
                         fin: (baseTime + dur).toFixed(1),
-                        variables: { Voluntad: 100, Vision: 100, Horus: 100, NC: 100 } // approximate defaults
+                        variables: stVars
                     }, null);
                 }
             }
