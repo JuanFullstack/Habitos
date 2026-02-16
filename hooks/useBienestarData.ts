@@ -27,9 +27,7 @@ export const useBienestarData = () => {
   const loadDataFromCloud = async () => {
     try {
       setIsSyncing(true);
-      // Ensure PB is authenticated & collection exists
       await ensurePBReady();
-      // Load last 50 days
       const records = await pb.collection(COLLECTIONS.DAILY_LOGS).getList(1, 50, {
         sort: '-date',
         requestKey: null
@@ -41,7 +39,6 @@ export const useBienestarData = () => {
           cloudDB[rec.date] = rec.content;
         });
 
-        // Merge with local (Cloud wins)
         setDb(prev => {
           const merged = { ...prev, ...cloudDB };
           localStorage.setItem('bienestarDB', JSON.stringify(merged));
@@ -51,7 +48,6 @@ export const useBienestarData = () => {
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (err: any) {
-      // 404 means collection not created yet -> Ignore
       if (err.status !== 404) {
         console.error("Offline or Error loading from DB:", err);
         setSyncStatus('error');
@@ -62,12 +58,10 @@ export const useBienestarData = () => {
     }
   };
 
-  // --- INITIAL LOAD FROM POCKETBASE ---
   useEffect(() => {
     if (!isSimulationMode) loadDataFromCloud();
   }, []);
 
-  // --- FETCH ON DEMAND (When selecting a date not in cache) ---
   useEffect(() => {
     if (timeRange === 'DÍA' && !db[currentDate] && !isSyncing && !isSimulationMode) {
       const fetchDate = async () => {
@@ -76,13 +70,11 @@ export const useBienestarData = () => {
           if (record) {
             setDb(prev => {
               const newDb = { ...prev, [currentDate]: record.content };
-              // Update local storage to cache it
               localStorage.setItem('bienestarDB', JSON.stringify(newDb));
               return newDb;
             });
           }
         } catch (e: any) {
-          // 404 is expected for new days
           if (e.status !== 404) console.warn("Error fetching day:", e);
         }
       };
@@ -95,25 +87,20 @@ export const useBienestarData = () => {
     return db[targetDate] || JSON.parse(JSON.stringify(INITIAL_DAY_DATA));
   };
 
-  // --- CENTRALIZED PROXY TO SAVE DATA ---
   const saveDayData = async (date: string, newData: IDayData) => {
-    // 1. Update State & LocalStorage (Optimistic UI)
     setDb(prev => {
       const newDb = { ...prev, [date]: newData };
       localStorage.setItem('bienestarDB', JSON.stringify(newDb));
       return newDb;
     });
 
-    // 2. Persist to PocketBase (Async) - ONLY IF NOT SIMULATING
     if (isSimulationMode) return;
 
     setSyncStatus('saving');
     setSyncError(null);
 
     try {
-      await ensurePBReady(); // Re-check auth before saving
-
-      // Check if exists
+      await ensurePBReady();
       try {
         const record = await pb.collection(COLLECTIONS.DAILY_LOGS).getFirstListItem(`date="${date}"`);
         await pb.collection(COLLECTIONS.DAILY_LOGS).update(record.id, { content: newData });
@@ -131,25 +118,22 @@ export const useBienestarData = () => {
     }
   };
 
-
-  // --- ACTIONS (Refactored to use saveDayData) ---
-
   const updateDayData = (newData: IDayData) => {
     const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
     saveDayData(targetDate, newData);
   };
 
-  const addActivity = (form: any, editingId: string | number | null) => {
+  // --- INTERNAL LOGIC (Refactored for Batching) ---
+
+  const _addActivity = (snapshot: IDayData, form: any, editingId: string | number | null) => {
     const safeEditingId = editingId ? editingId.toString() : null;
-    const currentDataSnapshot = getEditableDay();
     const now = new Date();
     const currentDecimal = now.getHours() + now.getMinutes() / 60;
 
     const inicio = form.inicio ? parseFloat(form.inicio) : currentDecimal;
     const fin = form.fin ? parseFloat(form.fin) : currentDecimal + 1;
 
-    // Validation (skip if editing same ID logic needs refining but basic overlap check is here)
-    if (checkOverlap(inicio, fin, currentDataSnapshot.actividades, safeEditingId)) {
+    if (checkOverlap(inicio, fin, snapshot.actividades, safeEditingId)) {
       throw new Error("¡Conflicto de horario! Ya existe una actividad en ese rango.");
     }
 
@@ -168,20 +152,16 @@ export const useBienestarData = () => {
       score: score
     };
 
-    // Flow Logic
     const flowId = `${newId}-flow`;
     const isFlowActive = form.isFlow === true;
 
-    const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
-    let updatedActivities = [...currentDataSnapshot.actividades];
-
+    let updatedActivities = [...snapshot.actividades];
     if (editingId) {
       updatedActivities = updatedActivities.map(a => a.id === editingId ? mainActivity : a);
     } else {
       updatedActivities.push(mainActivity);
     }
 
-    // Clear old flow
     updatedActivities = updatedActivities.filter(a => a.id !== flowId);
 
     if (isFlowActive) {
@@ -197,26 +177,23 @@ export const useBienestarData = () => {
       });
     }
 
-    // First Record Logic
-    let newConfig = { ...currentDataSnapshot.config };
-    const dayIsEmpty = currentDataSnapshot.actividades.length === 0 && currentDataSnapshot.estados.length === 0 && currentDataSnapshot.eventos.length === 0;
+    let newConfig = { ...snapshot.config };
+    const dayIsEmpty = snapshot.actividades.length === 0 && snapshot.estados.length === 0 && snapshot.eventos.length === 0;
     if (dayIsEmpty && !editingId) {
       newConfig.horaArranque = typeof inicio === 'number' ? inicio : parseFloat(inicio);
     }
 
-    saveDayData(targetDate, { ...currentDataSnapshot, actividades: updatedActivities, config: newConfig });
+    return { ...snapshot, actividades: updatedActivities, config: newConfig };
   };
 
-  const addState = (form: any, editingId: string | number | null) => {
-    const currentDataSnapshot = getEditableDay();
+  const _addState = (snapshot: IDayData, form: any, editingId: string | number | null) => {
     const now = new Date();
     const currentDecimal = now.getHours() + now.getMinutes() / 60;
-
     const inicio = form.inicio ? parseFloat(form.inicio) : roundOne(currentDecimal);
     const fin = form.fin ? parseFloat(form.fin) : roundOne(currentDecimal + 1);
 
     if (fin <= inicio) throw new Error("La hora de fin debe ser mayor a la hora de inicio.");
-    if (checkStateOverlap(inicio, fin, currentDataSnapshot.estados, editingId)) {
+    if (checkStateOverlap(inicio, fin, snapshot.estados, editingId)) {
       throw new Error("¡Conflicto de horario! Ya existe un estado registrado en ese rango.");
     }
 
@@ -226,29 +203,25 @@ export const useBienestarData = () => {
       v: parseInt(form.energia.toString()),
       contexto: form.contexto,
       preset: form.preset,
-      ...form.variables, // Spread directly as keys match (Ri, Voluntad, etc.) and are 0-100
+      ...form.variables,
     };
 
-    const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
     const updatedStates = editingId
-      ? currentDataSnapshot.estados.map(s => s.id === editingId ? newEstado : s).sort((a, b) => a.t - b.t)
-      : [...currentDataSnapshot.estados, newEstado].sort((a, b) => a.t - b.t);
+      ? snapshot.estados.map(s => s.id === editingId ? newEstado : s).sort((a, b) => a.t - b.t)
+      : [...snapshot.estados, newEstado].sort((a, b) => a.t - b.t);
 
-    // First Record Logic
-    let newConfig = { ...currentDataSnapshot.config };
-    const dayIsEmpty = currentDataSnapshot.actividades.length === 0 && currentDataSnapshot.estados.length === 0 && currentDataSnapshot.eventos.length === 0;
+    let newConfig = { ...snapshot.config };
+    const dayIsEmpty = snapshot.actividades.length === 0 && snapshot.estados.length === 0 && snapshot.eventos.length === 0;
     if (dayIsEmpty && !editingId) {
       newConfig.horaArranque = inicio;
     }
 
-    saveDayData(targetDate, { ...currentDataSnapshot, estados: updatedStates, config: newConfig });
+    return { ...snapshot, estados: updatedStates, config: newConfig };
   };
 
-  const addEvent = (eventData: { icon: string; label: string; t?: number; fin?: number; descripcion?: string }) => {
-    const currentDataSnapshot = getEditableDay();
+  const _addEvent = (snapshot: IDayData, eventData: any) => {
     const now = new Date();
     const decimalTime = now.getHours() + now.getMinutes() / 60;
-
     const newEvent: IEvent = {
       id: Date.now() + Math.random(),
       t: eventData.t !== undefined ? eventData.t : decimalTime,
@@ -258,34 +231,54 @@ export const useBienestarData = () => {
       descripcion: eventData.descripcion
     };
 
-    const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
-    // First Record Logic
-    let newConfig = { ...currentDataSnapshot.config };
-    const dayIsEmpty = currentDataSnapshot.actividades.length === 0 && currentDataSnapshot.estados.length === 0 && currentDataSnapshot.eventos.length === 0;
-    // For Events, use 't' as start
-    if (dayIsEmpty) { // Events rarely edited by ID in this context, but safe to check
-      newConfig.horaArranque = newEvent.t;
-    }
+    let newConfig = { ...snapshot.config };
+    const dayIsEmpty = snapshot.actividades.length === 0 && snapshot.estados.length === 0 && snapshot.eventos.length === 0;
+    if (dayIsEmpty) { newConfig.horaArranque = newEvent.t; }
 
-    saveDayData(targetDate, { ...currentDataSnapshot, eventos: [...currentDataSnapshot.eventos, newEvent], config: newConfig });
+    return { ...snapshot, eventos: [...snapshot.eventos, newEvent], config: newConfig };
+  };
+
+  // --- PUBLIC ACTIONS ---
+
+  const addActivity = (form: any, editingId: string | number | null) => {
+    const snapshot = getEditableDay();
+    const newData = _addActivity(snapshot, form, editingId);
+    updateDayData(newData);
+  };
+
+  const addState = (form: any, editingId: string | number | null) => {
+    const snapshot = getEditableDay();
+    const newData = _addState(snapshot, form, editingId);
+    updateDayData(newData);
+  };
+
+  const addEvent = (eventData: any) => {
+    const snapshot = getEditableDay();
+    const newData = _addEvent(snapshot, eventData);
+    updateDayData(newData);
+  };
+
+  const addBatch = (operations: { type: 'activity' | 'state' | 'event', data: any, id?: string | number | null }[]) => {
+    let snapshot = getEditableDay();
+    operations.forEach(op => {
+      if (op.type === 'activity') snapshot = _addActivity(snapshot, op.data, op.id || null);
+      if (op.type === 'state') snapshot = _addState(snapshot, op.data, op.id || null);
+      if (op.type === 'event') snapshot = _addEvent(snapshot, op.data);
+    });
+    updateDayData(snapshot);
   };
 
   const deleteItem = (type: 'actividades' | 'estados' | 'eventos', id: string | number) => {
     const currentDataSnapshot = getEditableDay();
-    const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
-
     let filteredList = (currentDataSnapshot[type] as any[]);
 
     if (type === 'actividades') {
       const flowId = `${id}-flow`;
-      // FORCE STRING COMPARISON
       filteredList = filteredList.filter(item => String(item.id) !== String(id) && String(item.id) !== String(flowId));
     } else {
-      // FORCE STRING COMPARISON
       filteredList = filteredList.filter(item => String(item.id) !== String(id));
     }
-
-    saveDayData(targetDate, { ...currentDataSnapshot, [type]: filteredList });
+    updateDayData({ ...currentDataSnapshot, [type]: filteredList });
   };
 
   const purgeDatabase = async () => {
@@ -310,7 +303,6 @@ export const useBienestarData = () => {
       return;
     }
     const currentDataSnapshot = getEditableDay();
-    const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
     const empty = JSON.parse(JSON.stringify(INITIAL_DAY_DATA));
 
     let newDayData;
@@ -319,15 +311,13 @@ export const useBienestarData = () => {
     } else {
       newDayData = { ...currentDataSnapshot, [section]: [] };
     }
-    saveDayData(targetDate, newDayData);
+    updateDayData(newDayData);
   };
 
   const handleSimulate = () => {
     setIsSimulationMode(true);
     localStorage.setItem('isSimulationMode', 'true');
     const newDb = simulateData(db);
-
-    // Update local state ONLY - DO NOT SYNC TO CLOUD
     setDb(newDb);
     localStorage.setItem('bienestarDB', JSON.stringify(newDb));
   };
@@ -346,10 +336,9 @@ export const useBienestarData = () => {
       return;
     }
     const imported = JSON.parse(json);
-    setDb(imported); // Local update
+    setDb(imported);
     localStorage.setItem('bienestarDB', JSON.stringify(imported));
 
-    // Async Sync
     Object.keys(imported).forEach(date => {
       saveDayData(date, imported[date]);
     });
@@ -357,7 +346,6 @@ export const useBienestarData = () => {
 
   const toggleFlujo = () => {
     const currentDataSnapshot = getEditableDay();
-    const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
     const now = new Date();
     const decimalTime = now.getHours() + now.getMinutes() / 60;
     const isActive = currentDataSnapshot.config.flujoActivo;
@@ -380,8 +368,7 @@ export const useBienestarData = () => {
       },
       actividades: newActs
     };
-
-    saveDayData(targetDate, newDayData);
+    updateDayData(newDayData);
   };
 
   const currentData: IDayData = useMemo(() => {
@@ -413,6 +400,7 @@ export const useBienestarData = () => {
     addActivity,
     addState,
     addEvent,
+    addBatch,
     deleteItem,
     resetData,
     handleSimulate,

@@ -14,6 +14,7 @@ interface MasterModalProps {
         addActivity: (form: any, id: string | number | null) => void;
         addState: (form: any, id: string | number | null) => void;
         addEvent: (data: any, id: string | number | null) => void;
+        addBatch?: (ops: any[]) => void;
     };
     editData?: { type: 'actividad' | 'estado' | 'accion', data: any } | null;
 }
@@ -278,53 +279,76 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
     const handleActionSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            handlers.addEvent({
-                label: actionForm.label,
-                icon: actionForm.icon,
-                t: baseTime,
-                fin: endTime,
-                descripcion: actionForm.desc
-            }, editData?.type === 'accion' ? editData.data.id : null);
-
-            // MACRO: Meditación / Reflexión creates Activity too
+            // MACRO: Meditación (15/30) / Reflexión
             const isMed = actionForm.label.includes('Meditación');
             const isRef = actionForm.label === 'Reflexión';
 
             if (!editData && (isMed || isRef)) {
                 const dur = actionForm.label.includes('15') ? 0.25 : actionForm.label.includes('30') ? 0.5 : 1.0;
-                // Add Activity: General / Meditando or Reflexion
                 const typeVal = isMed ? 'meditando' : 'reflexion';
                 const labelVal = isMed ? 'Meditando' : 'Reflexión';
 
-                handlers.addActivity({
+                // 1. Event Data
+                const eventData = {
+                    label: actionForm.label,
+                    icon: actionForm.icon,
+                    t: baseTime.toFixed(1) === 'NaN' ? baseTime : parseFloat(baseTime.toFixed(1)), // Ensure number
+                    fin: parseFloat((baseTime + dur).toFixed(1)),
+                    descripcion: actionForm.desc
+                };
+
+                // 2. Activity Data
+                const actData = {
                     categoria: 'general',
                     tipo: typeVal,
                     label: labelVal,
                     desc: actionForm.desc || (isMed ? 'Meditación' : 'Reflexión del día'),
-                    isFlow: isMed, // "muestra estado flujo"
+                    isFlow: isMed,
                     color: 'bg-gray-100 text-gray-800',
                     inicio: baseTime.toFixed(1),
                     fin: (baseTime + dur).toFixed(1)
-                }, null);
+                };
 
-                // Add State: Flujo (Meditation) or Normal (Reflexion)
-                if (isMed || isRef) {
-                    const stPreset = isMed ? 'Flujo' : 'Normal';
-                    const stEnergy = isMed ? 80 : 60; // Normal energy ~60
-                    const stVars = isMed
-                        ? { Voluntad: 80, Vision: 80, Horus: 80, NC: 80 }
-                        : { Ri: 40, Voluntad: 60, Vision: 60 }; // Normal defaults
+                // 3. State Data
+                const stPreset = isMed ? 'Flujo' : 'Normal';
+                const stEnergy = isMed ? 80 : 60;
+                const stVars = isMed
+                    ? { Voluntad: 80, Vision: 80, Horus: 80, NC: 80 }
+                    : { Ri: 40, Voluntad: 60, Vision: 60 };
 
-                    handlers.addState({
-                        preset: stPreset,
-                        energia: stEnergy,
-                        inicio: baseTime.toFixed(1),
-                        fin: (baseTime + dur).toFixed(1),
-                        variables: stVars
-                    }, null);
+                const stData = {
+                    preset: stPreset,
+                    energia: stEnergy,
+                    inicio: baseTime.toFixed(1),
+                    fin: (baseTime + dur).toFixed(1),
+                    variables: stVars
+                };
+
+                if (handlers.addBatch) {
+                    handlers.addBatch([
+                        { type: 'event', data: eventData },
+                        { type: 'activity', data: actData },
+                        { type: 'state', data: stData }
+                    ]);
+                } else {
+                    // Fallback
+                    handlers.addEvent(eventData, null);
+                    handlers.addActivity(actData, null);
+                    handlers.addState(stData, null);
                 }
+
+            } else {
+                // Standard Single Action
+                handlers.addEvent({
+                    label: actionForm.label,
+                    icon: actionForm.icon,
+                    t: baseTime,
+                    fin: endTime,
+                    descripcion: actionForm.desc
+                }, editData?.type === 'accion' ? editData.data.id : null);
             }
 
+            // Post-Submit
             if (editData) {
                 setActionForm(prev => ({ ...prev, label: '', icon: '', desc: '' }));
                 onClose();

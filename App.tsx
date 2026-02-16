@@ -23,7 +23,7 @@ import { DateModal } from './components/modals/DateModal';
 export default function App() {
   const {
     db, currentData, currentDate, setCurrentDate, timeRange, setTimeRange,
-    updateDayData, addActivity, addState, addEvent, deleteItem, resetData,
+    updateDayData, addActivity, addState, addEvent, addBatch, deleteItem, resetData,
     handleSimulate, toggleFlujo, revertSimulation, syncStatus, syncError
   } = useBienestarData();
 
@@ -378,7 +378,8 @@ export default function App() {
         handlers={{
           addActivity: addActivity,
           addState: addState,
-          addEvent: addEvent
+          addEvent: addEvent,
+          addBatch: addBatch
         }}
         editData={editData}
       />
