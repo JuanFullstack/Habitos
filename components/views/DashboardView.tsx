@@ -74,7 +74,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
       {/* Left Column */}
-      <div className="lg:col-span-3 space-y-6">
+      <div className="lg:col-span-3 space-y-0 md:space-y-6">
 
         {/* Metrics Grid - HIDDEN ON MOBILE (Now in Modal) */}
         <div className="hidden md:grid grid-cols-4 md:grid-cols-5 gap-1 md:gap-3 pb-0 md:pb-0 mb-0">
@@ -150,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Chart Canvas */}
-          <div className="relative w-full overflow-x-auto md:overflow-visible pb-0 pt-8 [&::-webkit-scrollbar]:hidden scrollbar-none mt-6 md:mt-0">
+          <div className="relative w-full overflow-x-auto md:overflow-visible pb-0 pt-2 [&::-webkit-scrollbar]:hidden scrollbar-none md:mt-0 touch-pan-y">
             <div
               className="relative h-[480px] md:h-[550px] transition-all duration-300 ease-out origin-left"
               style={{ width: `${zoomLevel * 100}%`, minWidth: '100%' }}

@@ -151,20 +151,16 @@ export const RecordsView: React.FC<RecordsViewProps> = ({
                           <div className="flex items-center gap-3">
                             <div className="font-mono text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">{formatTime(st.t)}</div>
                             <div>
-                              <div className="font-bold text-gray-800 flex items-center gap-2">
-                                {st.preset && <span className="text-sm font-bold text-gray-800">{st.preset}</span>}
-                                <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{st.v.toFixed(0)}%</span>
+                              <div className="font-bold text-gray-800">
+                                {st.preset || st.contexto || 'Estado'}
                               </div>
                             </div>
                           </div>
                         </td>
-
                         <td className="px-4 py-3 text-xs text-gray-500">
+                          {/* Minimal Context if needed, or empty to match request */}
                           <div className="flex gap-2 flex-wrap items-center">
-                            {/* Only show Voluntad if non-zero */}
-                            {st.Voluntad > 0 && <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-mono">Vol: {st.Voluntad?.toFixed(0)}</span>}
-                            {/* Only show Energia if different from Promedio (v) and Energia is defined */}
-                            {st.Energía !== undefined && st.Energía !== st.v && <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-mono">En: {st.Energía?.toFixed(0)}</span>}
+                            {/* Hidden details as per user request */}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
