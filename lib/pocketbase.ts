@@ -1,6 +1,6 @@
 import PocketBase from 'pocketbase';
 
-const PB_URL = import.meta.env.VITE_PB_URL || 'http://129.213.26.212:8090';
+const PB_URL = import.meta.env.VITE_PB_URL || 'https://pb-juan.129.213.26.212.sslip.io';
 const PB_EMAIL = import.meta.env.VITE_PB_ADMIN_EMAIL || '';
 const PB_PASS = import.meta.env.VITE_PB_ADMIN_PASSWORD || '';
 
