@@ -145,37 +145,42 @@ export const RecordsView: React.FC<RecordsViewProps> = ({
                   {currentData.estados.length === 0 ? (
                     <tr><td className="p-8 text-center text-gray-400 italic">No hay estados registrados</td></tr>
                   ) : (
-                    currentData.estados.slice().reverse().map(st => (
-                      <tr key={st.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="font-mono text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">{formatTime(st.t)}</div>
-                            <div>
-                              <div className="font-bold text-gray-800">
-                                {st.preset || st.contexto || 'Estado'}
+                    currentData.estados.slice().reverse().map((st, idx, arr) => {
+                      const nextState = arr[idx - 1];
+                      const endTime = nextState ? nextState.t : null;
+                      const timeStr = formatTime(st.t) + (endTime ? ` - ${formatTime(endTime)}` : '');
+                      const colorClass = (st.v ?? 50) >= 75 ? 'bg-green-400' : (st.v ?? 50) >= 40 ? 'bg-yellow-400' : 'bg-red-400';
+
+                      return (
+                        <tr key={st.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-1.5 h-8 rounded-full ${colorClass} shadow-sm shrink-0`}></div>
+                              <div>
+                                <div className="font-bold text-[#0e1b13]">{st.preset || st.contexto || 'Estado'}</div>
+                                <div className="text-[10px] text-gray-400 font-mono mt-0.5">{timeStr}</div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">
-                          {/* Minimal Context if needed, or empty to match request */}
-                          <div className="flex gap-2 flex-wrap items-center">
-                            {/* Hidden details as per user request */}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => onEditState(st)} className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all">
-                              <Pencil size={16} />
-                            </button>
-                            <button onClick={() => onDelete('estados', st.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500">
+                            {/* Minimal Context if needed, or empty to match request */}
+                            <div className="flex gap-2 flex-wrap items-center">
+                              {/* Hidden details as per user request */}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => onEditState(st)} className="p-2 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all">
+                                <Pencil size={16} />
+                              </button>
+                              <button onClick={() => onDelete('estados', st.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

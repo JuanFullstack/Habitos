@@ -250,7 +250,7 @@ export default function App() {
       <div className="max-w-6xl mx-auto px-3 md:px-4 mt-4 md:mt-8">
 
         {/* TIME FILTER & ACTIONS */}
-        <div className="flex items-center gap-2 mb-0 md:mb-6 overflow-x-auto pb-0 scrollbar-none">
+        <div className="flex items-center gap-2 mb-2 md:mb-6 overflow-x-auto pb-0 scrollbar-none">
           <div className="flex flex-wrap gap-1.5 md:gap-2 bg-white p-1 md:p-1.5 rounded-xl shadow-sm border border-gray-100 w-fit items-center flex-nowrap md:flex-wrap">
             {TIME_RANGES.map(range => (
               <button
