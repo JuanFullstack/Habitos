@@ -206,8 +206,15 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 fin: endTime.toFixed(1)
             }, editData?.type === 'actividad' ? editData.data.id : null);
 
-            setActForm(prev => ({ ...prev, desc: '', isFlow: false, categoria: '', tipo: '' }));
-            onClose();
+            if (editData) {
+                setActForm(prev => ({ ...prev, desc: '', isFlow: false, categoria: '', tipo: '' }));
+                onClose();
+            } else {
+                // Continuous Mode: Advance Time & Reset
+                setBaseTime(prev => prev + duration);
+                setDuration(1.0);
+                setActForm(prev => ({ ...prev, desc: '', isFlow: false, categoria: '', tipo: '' }));
+            }
         } catch (err: any) { alert(err.message); }
     };
 
@@ -219,7 +226,15 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 inicio: baseTime.toFixed(1),
                 fin: endTime.toFixed(1)
             }, editData?.type === 'estado' ? editData.data.id : null);
-            onClose();
+
+            if (editData) {
+                onClose();
+            } else {
+                setBaseTime(prev => prev + duration);
+                setDuration(1.0);
+                setSelectedPreset(null);
+                setStForm(prev => ({ ...prev, preset: '', contexto: '' }));
+            }
         } catch (err: any) { alert(err.message); }
     };
 
@@ -234,8 +249,14 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 descripcion: actionForm.desc
             }, editData?.type === 'accion' ? editData.data.id : null);
 
-            setActionForm(prev => ({ ...prev, label: '', icon: '', desc: '' }));
-            onClose();
+            if (editData) {
+                setActionForm(prev => ({ ...prev, label: '', icon: '', desc: '' }));
+                onClose();
+            } else {
+                setBaseTime(prev => prev + duration);
+                setDuration(1.0);
+                setActionForm(prev => ({ ...prev, label: '', icon: '', desc: '' }));
+            }
         } catch (err: any) { alert(err.message); }
     };
 
