@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Clock, Brain, Activity, Sunrise, Sunset, Eye, EyeOff, Zap, Layers, Plus, ZoomIn, ZoomOut } from 'lucide-react';
+import { Clock, Brain, Activity, Sunrise, Sunset, Eye, EyeOff, Zap, Layers, Plus, ZoomIn, ZoomOut, Settings } from 'lucide-react';
 import { MetricCard, TurnoBar, SleepGauge } from '../UIComponents';
 import ChartCanvas from '../ChartCanvas';
-import { IDayData, IMetrics } from '../../types';
+import { IDayData, IMetrics, TimeRange } from '../../types';
 import { CONFIG } from '../../constants';
 import { formatTime, getEffectiveStartTime } from '../../utils/calculations';
 
@@ -14,8 +14,11 @@ interface DashboardViewProps {
   onOpenStateModal: () => void;
   onOpenActionModal: () => void;
   onOpenFlowModal: () => void;
-  onOpenMasterModal?: () => void; // New prop
+  onOpenMasterModal?: () => void;
   onOpenTimeModal: (type: 'arranque' | 'finDia' | 'horasSueno') => void;
+  timeRange: TimeRange;
+  setTimeRange: (range: TimeRange) => void;
+  onOpenDateModal: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -27,7 +30,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenActionModal,
   onOpenFlowModal,
   onOpenMasterModal,
-  onOpenTimeModal
+  onOpenTimeModal,
+  timeRange,
+  setTimeRange,
+  onOpenDateModal
 }) => {
   const [chartMode, setChartMode] = useState<'area' | 'lines'>('area');
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100% width (fit), >1 = horizontal scroll
@@ -93,26 +99,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Desktop Legend/Controls */}
             <div className="flex-1 flex justify-center">
               {chartMode === 'lines' && (
-                <div className="hidden md:flex flex-wrap justify-center items-center gap-2 text-[10px]">
-                  {Object.keys(CONFIG.lineColors).map(key => (
-                    <button
-                      key={key}
-                      onClick={() => toggleLine(key)}
-                      className={`flex items-center px-2 py-1 rounded-full border transition-all ${visibleLines[key]
-                        ? 'bg-white border-gray-200 shadow-sm opacity-100 scale-100'
-                        : 'bg-transparent border-transparent opacity-40 grayscale scale-95'
-                        }`}
-                    >
-                      <div className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: CONFIG.lineColors[key as keyof typeof CONFIG.lineColors] }}></div>
-                      <span className="capitalize font-bold text-gray-600">{key}</span>
-                    </button>
-                  ))}
+                <div className="hidden md:flex justify-center items-center gap-2">
                   <button
-                    onClick={toggleAllLines}
-                    className="ml-2 px-2 py-1.5 flex items-center gap-1.5 text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold transition-colors"
-                    title={areAllVisible ? "Ocultar Todas" : "Mostrar Todas"}
+                    onClick={() => setShowFilterModal(true)}
+                    className="px-3 py-1.5 flex items-center gap-2 text-[10px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-all shadow-sm"
                   >
-                    {areAllVisible ? <EyeOff size={12} /> : <Eye size={12} />}
+                    <Settings size={14} />
+                    Configurar Líneas ({Object.values(visibleLines).filter(Boolean).length})
                   </button>
                 </div>
               )}
@@ -157,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Chart Canvas */}
-          <div className="relative w-full overflow-x-auto md:overflow-visible pb-0 [&::-webkit-scrollbar]:hidden scrollbar-none">
+          <div className="relative w-full overflow-x-auto md:overflow-visible pb-0 pt-8 [&::-webkit-scrollbar]:hidden scrollbar-none mt-6 md:mt-0">
             <div
               className="relative h-[480px] md:h-[550px] transition-all duration-300 ease-out origin-left"
               style={{ width: `${zoomLevel * 100}%`, minWidth: '100%' }}
@@ -224,79 +217,140 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* --- MOBILE MODALS --- */}
 
-      {/* 1. Full Screen Stats Modal */}
+      {/* 1. Full Screen Stats Modal - Redesigned */}
       {showMetricsModal && (
-        <div className="fixed inset-0 z-50 bg-[#f6f8f7] overflow-y-auto animate-fadeIn flex flex-col">
-          <div className="bg-white px-4 py-3 border-b flex justify-between items-center sticky top-0 z-10 shadow-sm">
-            <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-              <Layers size={20} className="text-[#19e66f]" /> Estadísticas del Día
+        <div className="fixed inset-0 z-50 bg-[#f6f8f7] animate-fadeIn flex flex-col">
+          <div className="bg-white px-4 py-4 border-b flex justify-between items-center shadow-sm sticky top-0 z-10">
+            <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2">
+              <Layers size={24} className="text-[#19e66f]" /> Estadísticas
             </h3>
-            <button onClick={() => setShowMetricsModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
+            <button
+              onClick={() => setShowMetricsModal(false)}
+              className="p-2 bg-gray-50 rounded-full text-gray-500 hover:bg-gray-100 border border-gray-100"
+            >
               ✕
             </button>
           </div>
-          <div className="p-4 grid grid-cols-2 gap-4">
-            {/* Main Metrics - Larger Cards */}
-            <div className="col-span-1"><MetricCard title="Aprovechado" value={metrics.aprovechadoPct + "%"} detail={`(${metrics.valDisp})`} color="text-indigo-600" /></div>
-            <div className="col-span-1"><MetricCard title="Útil" value={metrics.utilPct + "%"} detail={`(${metrics.valUtil})`} color="text-blue-600" /></div>
-            <div className="col-span-1"><MetricCard title="Justificado" value={metrics.justificadoPct + "%"} detail={`(${metrics.valJust})`} color="text-teal-600" /></div>
-            <div className="col-span-1"><MetricCard title="Sin Reg." value={metrics.vacioPct + "%"} detail={`(${metrics.valVacio})`} color="text-gray-400" /></div>
+
+          {/* Internal Time Filters */}
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex overflow-x-auto gap-2 scrollbar-none sticky top-[0px] z-20 shadow-sm">
+            {(['HOY', 'DÍA', 'SEMANA', 'MES', 'AÑO', 'HIST'] as TimeRange[]).map((range) => (
+              <button
+                key={range}
+                onClick={() => {
+                  setTimeRange(range);
+                  if (range === 'DÍA') onOpenDateModal();
+                }}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all whitespace-nowrap border ${timeRange === range
+                  ? 'bg-[#19e66f] text-[#0e1b13] border-[#19e66f] shadow-md transform scale-105'
+                  : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200'
+                  }`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-50/50">
+
+            {/* Main Stats Group */}
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <MetricCard title="Aprovechado" value={metrics.aprovechadoPct + "%"} detail={`(${metrics.valDisp})`} color="text-indigo-600" size="lg" />
+              <MetricCard title="Útil" value={metrics.utilPct + "%"} detail={`(${metrics.valUtil})`} color="text-blue-600" size="lg" />
+              <MetricCard title="Justificado" value={metrics.justificadoPct + "%"} detail={`(${metrics.valJust})`} color="text-teal-600" size="lg" />
+              <MetricCard title="Sin Reg." value={metrics.vacioPct + "%"} detail={`(${metrics.valVacio})`} color="text-gray-400" size="lg" />
+            </div>
 
             {/* Productivity Section */}
-            <div className="col-span-2 mt-2">
-              <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Productividad por Turno</h4>
-              <div className="grid grid-cols-3 gap-2">
-                <MetricCard title="Mañana" value={metrics.prodMorning + "%"} detail="" color={metrics.prodMorning >= 50 ? "text-green-600" : "text-red-500"} />
-                <MetricCard title="Tarde" value={metrics.prodAfternoon + "%"} detail="" color={metrics.prodAfternoon >= 50 ? "text-green-600" : "text-red-500"} />
-                <MetricCard title="Noche" value={metrics.prodNight + "%"} detail="" color={metrics.prodNight >= 50 ? "text-green-600" : "text-red-500"} />
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+              <h4 className="text-sm font-bold text-gray-400 uppercase mb-4 tracking-wider">Productividad por Turno</h4>
+              <div className="space-y-4">
+                <TurnoRow label="Mañana" pct={metrics.prodMorning} />
+                <TurnoRow label="Tarde" pct={metrics.prodAfternoon} />
+                <TurnoRow label="Noche" pct={metrics.prodNight} />
               </div>
             </div>
 
-            {/* Times */}
-            <div className="col-span-2 mt-2 grid grid-cols-2 gap-4">
-              <MetricCard title="Hora Arranque" value={formatTime(currentData.config.horaArranque || 7)} detail={<button onClick={() => { onOpenTimeModal('arranque'); setShowMetricsModal(false); }} className="text-[10px] underline text-indigo-500">Editar</button>} color="text-green-600" />
-              <MetricCard title="Fin del Día" value={formatTime(currentData.config.finDia || 23.5)} detail={<button onClick={() => { onOpenTimeModal('finDia'); setShowMetricsModal(false); }} className="text-[10px] underline text-orange-500">Editar</button>} color="text-gray-600" />
-            </div>
+            {/* Schedules & Sleep */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+              <h4 className="text-sm font-bold text-gray-400 uppercase mb-4 tracking-wider">Configuración Diaria</h4>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm text-green-600"><Sunrise size={20} /></div>
+                    <span className="font-bold text-gray-700">Arranque</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold text-gray-800">{formatTime(currentData.config.horaArranque || 7)}</span>
+                    <button onClick={() => { onOpenTimeModal('arranque'); setShowMetricsModal(false); }} className="text-xs bg-white px-2 py-1 rounded border shadow-sm font-bold text-indigo-600">Edit</button>
+                  </div>
+                </div>
 
-            <div className="col-span-1">
-              <MetricCard title="Horas Sueño" value={(currentData.config.horasSueno || 7) + "h"} detail={<button onClick={() => { onOpenTimeModal('horasSueno'); setShowMetricsModal(false); }} className="text-[10px] underline text-purple-500">Editar</button>} color="text-purple-600" />
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm text-orange-600"><Sunset size={20} /></div>
+                    <span className="font-bold text-gray-700">Fin Día</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold text-gray-800">{formatTime(currentData.config.finDia || 23.5)}</span>
+                    <button onClick={() => { onOpenTimeModal('finDia'); setShowMetricsModal(false); }} className="text-xs bg-white px-2 py-1 rounded border shadow-sm font-bold text-orange-600">Edit</button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm text-purple-600"><Clock size={20} /></div>
+                    <span className="font-bold text-gray-700">Sueño</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-bold text-gray-800">{currentData.config.horasSueno || 7}h</span>
+                    <button onClick={() => { onOpenTimeModal('horasSueno'); setShowMetricsModal(false); }} className="text-xs bg-white px-2 py-1 rounded border shadow-sm font-bold text-purple-600">Edit</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. Line Filter Modal */}
+      {/* 2. Line Filter Modal - Centered Update */}
       {showFilterModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center p-4 animate-fadeIn" onClick={() => setShowFilterModal(false)}>
-          <div className="bg-white w-full max-w-sm rounded-2xl p-4 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h3 className="font-bold text-gray-800">Filtrar Líneas</h3>
-              <button onClick={() => setShowFilterModal(false)} className="text-sm font-bold text-indigo-600">Listo</button>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={() => setShowFilterModal(false)}>
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl max-h-[85vh] overflow-y-auto flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6 border-b pb-4 sticky top-0 bg-white z-10">
+              <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2">
+                <Zap size={20} className="text-orange-500" /> Filtros de Línea
+              </h3>
+              <button onClick={() => setShowFilterModal(false)} className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-sm font-bold hover:bg-indigo-100 transition-colors">Listo</button>
             </div>
-            <div className="space-y-2">
+
+            <div className="space-y-3 pb-2">
               <button
                 onClick={toggleAllLines}
-                className="w-full p-3 flex items-center justify-between bg-gray-50 rounded-lg hover:bg-gray-100 font-bold text-gray-600 mb-2"
+                className={`w-full p-4 flex items-center justify-between rounded-xl font-bold transition-all border-2 ${areAllVisible
+                  ? 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
+                  : 'bg-green-50 text-green-600 border-green-100 hover:bg-green-100'
+                  }`}
               >
                 <span>{areAllVisible ? "Ocultar Todas" : "Mostrar Todas"}</span>
-                {areAllVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+                {areAllVisible ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3">
                 {Object.keys(CONFIG.lineColors).map(key => (
                   <button
                     key={key}
                     onClick={() => toggleLine(key)}
-                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${visibleLines[key]
-                      ? 'bg-white border-green-200 shadow-sm ring-1 ring-green-100'
-                      : 'bg-gray-50 border-gray-100 opacity-60 grayscale'
+                    className={`flex items-center justify-between p-3 px-4 rounded-xl border-2 transition-all ${visibleLines[key]
+                      ? 'bg-white border-indigo-100 shadow-md transform scale-[1.02]'
+                      : 'bg-gray-50 border-transparent opacity-60'
                       }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CONFIG.lineColors[key as keyof typeof CONFIG.lineColors] }}></div>
-                      <span className="capitalize font-bold text-sm text-gray-700">{key}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 rounded-full shadow-sm ring-2 ring-white" style={{ backgroundColor: CONFIG.lineColors[key as keyof typeof CONFIG.lineColors] }}></div>
+                      <span className="capitalize font-bold text-base text-gray-700">{key}</span>
                     </div>
-                    {visibleLines[key] && <div className="text-green-500 text-xs">✓</div>}
+                    {visibleLines[key] && <div className="w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs">✓</div>}
                   </button>
                 ))}
               </div>
@@ -307,3 +361,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </div>
   );
 };
+
+// Helper internal component for Productivity Rows
+const TurnoRow = ({ label, pct }: { label: string, pct: number }) => (
+  <div className="flex items-center gap-3">
+    <span className="w-16 text-sm font-bold text-gray-500">{label}</span>
+    <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+      <div
+        className={`h-full rounded-full ${pct >= 50 ? 'bg-green-500' : pct >= 30 ? 'bg-yellow-400' : 'bg-red-400'}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+    <span className="w-10 text-right text-sm font-bold text-gray-700">{pct}%</span>
+  </div>
+);

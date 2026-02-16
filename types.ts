@@ -24,13 +24,18 @@ export interface IStatePoint {
   id: string | number;
   t: number; // Represents 'Inicio'
   fin?: number; // Represents 'Fin' (Optional for backward compatibility)
-  v: number; // Balance Energía Global (0-100)
+  v: number; // Balance Energía Global (0-100) - Maps to 'Promedio'
   Ri: number;
   Voluntad: number;
   Distracción: number;
   Horus: number;
-  Energía: number; // Variable de energía (0-5)
+  Energía: number; // Variable de energía (0-5) -> Now 0-100?
+  Afectacion?: number; // New
+  NC?: number; // New
+  DI?: number; // New
+  Vision?: number; // New
   Contexto?: string;
+  preset?: string; // New
   [key: string]: any; // Allow dynamic access for chart mapping
 }
 

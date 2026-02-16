@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../UIComponents';
-import { CATEGORIAS_ACTIVIDAD, VARIABLES_EMOCIONALES } from '../../constants';
+import { CATEGORIAS_ACTIVIDAD, VARIABLES_EMOCIONALES, STATE_PRESETS } from '../../constants';
 import { IDayData } from '../../types';
 import { formatTime } from '../../utils/calculations';
-import { Clock, Activity, Brain, Zap, Minus, Plus, X } from 'lucide-react';
+import { Clock, Activity, Brain, Zap, Minus, Plus, X, Save, Sliders, Wind, BatteryLow, Flame } from 'lucide-react';
+import { StateModal } from './StateModal';
 
 interface MasterModalProps {
     isOpen: boolean;
@@ -32,16 +33,85 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
     const [duration, setDuration] = useState(1.0);
 
     // Forms
+    // Forms
     const [actForm, setActForm] = useState({ categoria: '', tipo: '', desc: '', isFlow: false });
-    const [stForm, setStForm] = useState({ energia: 75, variables: {} as any });
+    const [stForm, setStForm] = useState({ energia: 75, variables: {} as any, contexto: '' });
     const [actionForm, setActionForm] = useState({ label: '', icon: '', desc: '' });
 
-    // Init State Vars
+    // Preset States
+    const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+    const [customPresets, setCustomPresets] = useState<any[]>([]);
+    const [isNamingPreset, setIsNamingPreset] = useState(false);
+    const [newPresetName, setNewPresetName] = useState('');
+
     useEffect(() => {
+        const saved = localStorage.getItem('customStatePresets');
+        if (saved) { try { setCustomPresets(JSON.parse(saved)); } catch (e) { console.error(e); } }
+
+        // Init Vars
         const vars: any = {};
         VARIABLES_EMOCIONALES.forEach(v => vars[v] = 0);
         setStForm(prev => ({ ...prev, variables: vars }));
     }, []);
+
+    const savePreset = () => {
+        if (!newPresetName.trim()) return;
+        const newPreset = {
+            label: newPresetName,
+            v: stForm.energia,
+            ...stForm.variables,
+            contexto: stForm.contexto
+        };
+        const updated = [...customPresets, newPreset];
+        setCustomPresets(updated);
+        localStorage.setItem('customStatePresets', JSON.stringify(updated));
+        setIsNamingPreset(false);
+        setNewPresetName('');
+    };
+
+    const deletePreset = (label: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (confirm(`¿Eliminar preset "${label}"?`)) {
+            const updated = customPresets.filter(p => p.label !== label);
+            setCustomPresets(updated);
+            localStorage.setItem('customStatePresets', JSON.stringify(updated));
+        }
+    };
+
+    const applyPreset = (preset: any) => {
+        setSelectedPreset(preset.label);
+        // If 'Cargar estado', we just allow the UI to expand (handled in render), no variable overrides needed yet.
+        if (preset.label === 'Cargar estado') return;
+
+        const newVariables = { ...stForm.variables };
+        VARIABLES_EMOCIONALES.forEach(key => {
+            let presetKey = key.toLowerCase();
+            // Map Keys (Standard)
+            if (key === 'Distracción') presetKey = 'distraccion';
+            if (key === 'Energía') presetKey = 'energia';
+            if (key === 'Afectacion') presetKey = 'afectacion';
+            if (key === 'Vision') presetKey = 'vision';
+            if (key === 'Voluntad') presetKey = 'voluntad';
+            if (key === 'Horus') presetKey = 'horus';
+            if (key === 'Ri') presetKey = 'ri';
+            if (key === 'NC') presetKey = 'nc';
+            if (key === 'DI') presetKey = 'di';
+
+            let val = preset[key];
+            if (val === undefined) val = preset[presetKey];
+
+            if (val !== undefined && val !== null) {
+                newVariables[key] = val;
+            }
+        });
+
+        setStForm(prev => ({
+            ...prev,
+            energia: preset.v !== null ? preset.v : prev.energia,
+            contexto: preset.contexto === 'AGGREGATE' ? (prev.contexto || '') : (preset.contexto || ''),
+            variables: newVariables
+        }));
+    };
 
     // AUTO-CALC START TIME
     useEffect(() => {
@@ -175,6 +245,45 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
 
     if (!isOpen) return null;
 
+    // ABRIR MODAL SEPARADO PARA PERSONALIZAR
+    if (selectedPreset === 'Cargar estado') {
+        return (
+            <StateModal
+                isOpen={true}
+                onClose={() => setSelectedPreset(null)}
+                mode='CREATE_PRESET'
+                onPresetCreated={() => {
+                    const saved = localStorage.getItem('customStatePresets');
+                    if (saved) {
+                        try { setCustomPresets(JSON.parse(saved)); } catch (e) { console.error(e); }
+                    }
+                    setSelectedPreset(null);
+                }}
+                form={{
+                    ...stForm,
+                    expNegativa: false,
+                    inicio: formatTime(baseTime),
+                    fin: formatTime(endTime)
+                }}
+                setForm={(val) => {
+                    if (typeof val === 'function') {
+                        setStForm(prev => {
+                            const next = val({ ...prev, expNegativa: false, inicio: '', fin: '' });
+                            return { ...prev, energia: next.energia, variables: next.variables, contexto: next.contexto };
+                        });
+                    } else {
+                        setStForm(prev => ({ ...prev, ...val }));
+                    }
+                }}
+                onSubmit={() => { }}
+                isEditing={false}
+                onVarChange={() => { }}
+                timeRange={'DÍA' as any}
+                currentDate={'Hoy'}
+            />
+        );
+    }
+
     return (
         <Modal onClose={onClose} maxWidth="max-w-xl" noBackdrop={false}>
             {/* HEADER TABS */}
@@ -269,33 +378,105 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 )}
 
                 {activeTab === 'estado' && (
-                    <form onSubmit={handleStSubmit} className="space-y-5">
-                        <div className="bg-white border border-gray-200 p-3 rounded-xl">
-                            <div className="flex justify-between items-end mb-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase">Nivel de Energía</label>
-                                <span className="text-xl font-black text-[#0e1b13]">{stForm.energia}%</span>
+                    <form onSubmit={handleStSubmit} className="space-y-6">
+
+                        {/* 1. SELECCIÓN DE ESTADO (Buttons) */}
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase mb-3 block tracking-wider">Selecciona tu Estado</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                {[...STATE_PRESETS, ...customPresets].map(preset => {
+                                    const isSelected = selectedPreset === preset.label;
+                                    const isCreate = preset.label === 'Cargar estado';
+
+                                    // Dynamic Style
+                                    let style = "bg-white text-gray-600 border-gray-100 hover:border-gray-300 hover:bg-gray-50";
+                                    if (isSelected) style = "bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm";
+
+                                    if (preset.label === 'Normal') {
+                                        style = isSelected ? "bg-green-100 text-green-800 border-green-300 shadow-sm" : "bg-white text-green-700 border-green-100 hover:bg-green-50";
+                                    }
+                                    else if (preset.label === 'Flujo') {
+                                        style = isSelected ? "bg-cyan-100 text-cyan-800 border-cyan-300 shadow-sm" : "bg-white text-cyan-700 border-cyan-100 hover:bg-cyan-50";
+                                    }
+                                    else if (preset.label.includes('Bajón') || preset.label.includes('Cansado')) {
+                                        style = isSelected ? "bg-orange-100 text-orange-800 border-orange-300 shadow-sm" : "bg-white text-orange-700 border-orange-100 hover:bg-orange-50";
+                                    }
+                                    else if (preset.label.includes('Enojado')) {
+                                        style = isSelected ? "bg-red-100 text-red-800 border-red-300 shadow-sm" : "bg-white text-red-700 border-red-100 hover:bg-red-50";
+                                    }
+                                    else if (isCreate) {
+                                        style = "bg-indigo-50 text-indigo-600 border-indigo-200 border-dashed hover:bg-indigo-100 col-span-2";
+                                    }
+
+                                    // Dynamic Icon
+                                    let Icon = Zap;
+                                    if (preset.label === 'Normal') Icon = Activity;
+                                    if (preset.label === 'Flujo') Icon = Wind;
+                                    if (preset.label.includes('Bajón') || preset.label.includes('Cansado')) Icon = BatteryLow;
+                                    if (preset.label.includes('Enojado')) Icon = Flame;
+                                    if (isCreate) Icon = Sliders;
+
+                                    return (
+                                        <button
+                                            key={preset.label}
+                                            type="button"
+                                            onClick={() => applyPreset(preset)}
+                                            className={`relative overflow-hidden rounded-xl p-3 transition-all duration-200 border-2 flex items-center justify-center gap-2 min-h-[50px] ${style}`}
+                                        >
+                                            {customPresets.some(p => p.label === preset.label) && (
+                                                <div onClick={(e) => deletePreset(preset.label, e)} className="absolute top-1 right-1 opacity-50 hover:opacity-100 cursor-pointer"><X size={12} /></div>
+                                            )}
+
+                                            <Icon size={18} />
+                                            <span className="font-bold text-xs">{preset.label}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <input type="range" min="0" max="100" className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#19e66f]"
-                                value={stForm.energia} onChange={e => setStForm({ ...stForm, energia: parseInt(e.target.value) })} />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-                            {VARIABLES_EMOCIONALES.slice(0, 4).map(v => (
-                                <div key={v}>
-                                    <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
-                                        <span>{v}</span>
-                                        <span className="text-indigo-600">{stForm.variables[v] || 0}</span>
-                                    </div>
-                                    <input type="range" min="0" max="5" className="w-full h-1 bg-gray-200 rounded-full appearance-none cursor-pointer accent-indigo-500"
-                                        value={stForm.variables[v] || 0} onChange={e => setStForm({ ...stForm, variables: { ...stForm.variables, [v]: parseInt(e.target.value) } })} />
-                                </div>
-                            ))}
-                        </div>
-
-                        <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md transition-all">
-                            REGISTRAR ESTADO
+                        {/* 3. SUBMIT BUTTON */}
+                        <button type="submit" disabled={!selectedPreset} className="w-full py-4 bg-indigo-600 text-white font-bold tracking-wide rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+                            <Zap size={20} />
+                            {selectedPreset === 'Cargar estado' ? 'ABRIR FORMULARIO PERSONALIZADO' : `REGISTRAR ${selectedPreset?.toUpperCase() || 'ESTADO'}`}
                         </button>
                     </form>
+                )}
+
+                {/* NESTED MODAL FOR CUSTOM STATE */}
+                {selectedPreset === 'Cargar estado' && (
+                    <StateModal
+                        isOpen={true}
+                        onClose={() => setSelectedPreset(null)}
+                        form={{
+                            ...stForm,
+                            expNegativa: false,
+                            inicio: formatTime(baseTime),
+                            fin: formatTime(endTime)
+                        }}
+                        setForm={(val) => {
+                            // Helper to update stForm from StateModal
+                            if (typeof val === 'function') {
+                                setStForm(prev => {
+                                    const next = val({ ...prev, expNegativa: false, inicio: '', fin: '' });
+                                    return { ...prev, energia: next.energia, variables: next.variables, contexto: next.contexto };
+                                });
+                            } else {
+                                setStForm(prev => ({ ...prev, ...val }));
+                            }
+                        }}
+                        onSubmit={(e) => {
+                            if (e) e.preventDefault();
+                            handleStSubmit(e as any);
+                            setSelectedPreset(null);
+                        }}
+                        isEditing={false}
+                        onVarChange={(k, v) => {
+                            // Minimal handler
+                        }}
+                        timeRange={'DÍA'}
+                        currentDate={'Hoy'}
+                    />
                 )}
 
                 {activeTab === 'accion' && (

@@ -322,6 +322,10 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ data, mode, config, isAggrega
         drawLine('voluntad', config.lineColors.voluntad, 'Voluntad');
         drawLine('horus', config.lineColors.horus, 'Horus');
         drawLine('energia', config.lineColors.energia, 'Energía');
+        drawLine('afectacion', config.lineColors.afectacion, 'Afectacion');
+        drawLine('nc', config.lineColors.nc, 'NC');
+        drawLine('di', config.lineColors.di, 'DI');
+        drawLine('vision', config.lineColors.vision, 'Vision');
       };
 
       const drawStartLine = () => {
@@ -480,7 +484,7 @@ const ChartCanvas: React.FC<ChartCanvasProps> = ({ data, mode, config, isAggrega
   return (
     <div ref={containerRef} className="relative w-full h-full">
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-10" />
-      <div className="absolute top-0 left-0 w-[40px] h-[300px] flex flex-col justify-between items-end pr-2 text-[10px] text-gray-400 font-mono z-20 pointer-events-none select-none">
+      <div style={{ width: config.chartPaddingLeft }} className="absolute top-0 left-0 h-[300px] flex flex-col justify-between items-end pr-0.5 text-[9px] text-gray-400 font-mono z-20 pointer-events-none select-none">
         <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
       </div>
       <div className="absolute top-[300px] left-0 w-full h-[30px] flex text-xs text-gray-500 font-mono pt-1 z-20 border-t border-gray-300 pointer-events-none select-none">

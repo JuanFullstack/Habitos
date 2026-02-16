@@ -64,9 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button onClick={onOpenTimeModal} className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#0e1b13] text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition">
             <PowerIcon /> {formatTime(effectiveStart)} {isAuto ? "(Auto)" : ""}
           </button>
-          <button onClick={onOpenDBSetup} className="p-1.5 md:p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition shadow-sm" title="Configurar Base de Datos">
-            <Database size={16} />
-          </button>
+
           <div className="hidden md:flex w-8 h-8 rounded-full bg-indigo-100 items-center justify-center text-indigo-700 font-bold text-xs">
             AD
           </div>

@@ -1,4 +1,4 @@
-import { CONFIG, INITIAL_DAY_DATA, CATEGORIAS_ACTIVIDAD } from '../constants';
+import { CONFIG, INITIAL_DAY_DATA, CATEGORIAS_ACTIVIDAD, STATE_PRESETS } from '../constants';
 import { Database, IActivity, IDayData, IHabitStats, IMetrics, IStatePoint, TimeRange } from '../types';
 
 export const roundOne = (num: number) => Math.round(num * 10) / 10;
@@ -440,29 +440,46 @@ export const simulateData = (currentDb: Database): Database => {
 
     const ests: IStatePoint[] = [];
     let stateT = arranque;
-    let lastV = isBadDay ? 30 : 50;
     let stateIdx = 0;
+
+    // Helper to add noise (+/- 5%) and clamp 0-100
+    const applyNoise = (val: number | null | undefined) => {
+      if (typeof val !== 'number') return 50;
+      const noise = Math.random() * 10 - 5;
+      return Math.max(0, Math.min(100, Math.round(val + noise)));
+    };
 
     while (stateT < finDia) {
       let dur = 1.0 + Math.random() * 2.0;
       let endT = Math.min(finDia, stateT + dur);
-      let baseV = 50;
-      if (stateT < 10) baseV = 75;
-      else if (stateT >= 13 && stateT < 16) baseV = 40;
-      else if (stateT >= 20) baseV = 45;
-      else baseV = 60;
-      if (isBadDay) baseV -= 30;
-      if (isGreatDay) baseV += 20;
-      const noise = (Math.random() * 50) - 25;
-      let targetV = baseV + noise;
-      if (Math.random() < 0.1) targetV -= 40;
-      targetV = Math.max(5, Math.min(100, targetV));
-      targetV = (lastV * 0.3) + (targetV * 0.7);
-      lastV = targetV;
-      const randVar = () => Math.round(Math.random() * 100);
+
+      // Select preset based on probabilities
+      const r = Math.random();
+      let presetLabel = 'Normal';
+      if (r < 0.2) presetLabel = 'Flujo';
+      else if (r < 0.3) presetLabel = 'Bajón de energía';
+      else if (r < 0.4) presetLabel = 'Enojado';
+      else if (r < 0.5) presetLabel = 'Cansado mental';
+      else if (r < 0.6) presetLabel = 'Cansado Físico';
+
+      const preset = STATE_PRESETS.find(p => p.label === presetLabel) || STATE_PRESETS[0];
+
       ests.push({
-        id: `st-sim-${i}-${stateIdx}`, t: roundOne(stateT), fin: roundOne(endT), v: Math.round(targetV),
-        Ri: randVar(), Distracción: randVar(), Voluntad: randVar(), Horus: randVar(), Energía: randVar(), Contexto: "Simulado"
+        id: `st-sim-${i}-${stateIdx}`,
+        t: roundOne(stateT),
+        fin: roundOne(endT),
+        v: applyNoise(preset.v),
+        Ri: applyNoise(preset.ri),
+        Voluntad: applyNoise(preset.voluntad),
+        Distracción: applyNoise(preset.distraccion),
+        Horus: applyNoise(preset.horus),
+        Energía: applyNoise(preset.energia),
+        Afectacion: applyNoise(preset.afectacion),
+        NC: applyNoise(preset.nc),
+        DI: applyNoise(preset.di),
+        Vision: applyNoise(preset.vision),
+        Contexto: `Simulado: ${preset.label}`,
+        preset: preset.label
       });
       stateT = endT;
       stateIdx++;
@@ -535,7 +552,7 @@ export const aggregateData = (db: Database, range: TimeRange): IDayData => {
 
   slots.forEach(t => {
     const slotEnd = t + SLOT_SIZE;
-    const sums = { v: 0, Ri: 0, Voluntad: 0, Distracción: 0, Horus: 0, Energía: 0 };
+    const sums = { v: 0, Ri: 0, Voluntad: 0, Distracción: 0, Horus: 0, Energía: 0, Afectacion: 0, NC: 0, DI: 0, Vision: 0 };
     let count = 0;
 
     validDays.forEach(day => {
@@ -550,6 +567,10 @@ export const aggregateData = (db: Database, range: TimeRange): IDayData => {
           sums.Distracción += st.Distracción || 0;
           sums.Horus += st.Horus || 0;
           sums.Energía += st.Energía || 0;
+          sums.Afectacion += st.Afectacion || 0;
+          sums.NC += st.NC || 0;
+          sums.DI += st.DI || 0;
+          sums.Vision += st.Vision || 0;
           count++;
         }
       });
@@ -566,6 +587,10 @@ export const aggregateData = (db: Database, range: TimeRange): IDayData => {
         Distracción: Math.round(sums.Distracción / count),
         Horus: Math.round(sums.Horus / count),
         Energía: Math.round(sums.Energía / count),
+        Afectacion: Math.round(sums.Afectacion / count),
+        NC: Math.round(sums.NC / count),
+        DI: Math.round(sums.DI / count),
+        Vision: Math.round(sums.Vision / count),
         Contexto: "Promedio"
       });
     }

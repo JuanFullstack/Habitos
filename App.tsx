@@ -18,6 +18,7 @@ import { SimulationModal } from './components/modals/SimulationModal';
 import { ActionModal } from './components/modals/ActionModal';
 import { MasterModal } from './components/modals/MasterModal';
 import { DBSetupModal } from './components/modals/DBSetupModal';
+import { DateModal } from './components/modals/DateModal';
 
 export default function App() {
   const {
@@ -48,6 +49,7 @@ export default function App() {
   const [showActionModal, setShowActionModal] = useState(false);
   const [showMasterModal, setShowMasterModal] = useState(false);
   const [showDBSetup, setShowDBSetup] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
 
   // Form State
   const [formActividad, setFormActividad] = useState({ categoria: '', tipo: '', desc: '', inicio: '', fin: '', isFlow: false });
@@ -251,29 +253,19 @@ export default function App() {
             {TIME_RANGES.map(range => (
               <button
                 key={range}
-                onClick={() => setTimeRange(range as TimeRange)}
+                onClick={() => {
+                  setTimeRange(range as TimeRange);
+                  if (range === 'DÍA') setShowDateModal(true);
+                }}
                 className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all whitespace-nowrap ${timeRange === range
                   ? 'bg-[#19e66f] text-[#0e1b13] shadow-sm'
                   : 'text-gray-500 hover:bg-gray-50'
                   }`}
               >
-                {range}
+                {range} {range === 'DÍA' && <span className="ml-1 text-[8px] opacity-70">▼</span>}
               </button>
             ))}
-            {/* Day Selector */}
-            {timeRange === 'DÍA' && (
-              <div className="ml-2 flex items-center gap-2 border-l border-gray-200 pl-2">
-                <button onClick={() => {
-                  const d = new Date(currentDate); d.setDate(d.getDate() - 1);
-                  setCurrentDate(d.toISOString().split('T')[0]);
-                }} className="p-1 hover:bg-gray-100 rounded"><ChevronLeft size={14} /></button>
-                <span className="text-xs font-mono font-bold text-gray-700 whitespace-nowrap">{currentDate}</span>
-                <button onClick={() => {
-                  const d = new Date(currentDate); d.setDate(d.getDate() + 1);
-                  setCurrentDate(d.toISOString().split('T')[0]);
-                }} className="p-1 hover:bg-gray-100 rounded"><ChevronRight size={14} /></button>
-              </div>
-            )}
+
           </div>
 
           {/* QUICK ADD BUTTON */}
@@ -303,6 +295,9 @@ export default function App() {
               else if (type === 'horasSueno') initialTime = currentData.config.horasSueno || 7;
               setTempTime(initialTime);
             }}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
+            onOpenDateModal={() => setShowDateModal(true)}
           />
         )}
 
@@ -383,6 +378,14 @@ export default function App() {
           addState: addState,
           addEvent: addEvent
         }}
+      />
+
+      <DateModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
+        currentDate={currentDate}
+        onSelectDate={(date) => setCurrentDate(date)}
+        recordedDates={Object.keys(db)}
       />
 
       {showDBSetup && (

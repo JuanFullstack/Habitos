@@ -89,17 +89,21 @@ interface MetricCardProps {
   value: string | React.ReactNode;
   detail?: string | React.ReactNode;
   color: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export const MetricCard: React.FC<MetricCardProps> = ({ title, value, detail, color }) => (
-  <div className="bg-white p-1.5 md:p-3 rounded-lg md:rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full min-h-[50px] items-center text-center">
-    <div className="text-[7px] md:text-[10px] text-gray-400 uppercase font-bold tracking-wider truncate leading-tight w-full">{title}</div>
-    <div>
-      <div className={`text-xs md:text-xl font-bold ${color} leading-tight`}>{value}</div>
-      {detail && <div className="text-[7px] md:text-[10px] text-gray-400 font-medium mt-0 md:mt-0.5 truncate w-full">{detail}</div>}
+export const MetricCard: React.FC<MetricCardProps> = ({ title, value, detail, color, size = 'sm' }) => {
+  const isLg = size === 'lg';
+  return (
+    <div className={`bg-white rounded-lg md:rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full items-center text-center ${isLg ? 'p-3 min-h-[90px]' : 'p-1.5 md:p-3 min-h-[50px]'}`}>
+      <div className={`${isLg ? 'text-xs mb-1' : 'text-[7px] md:text-[10px]'} text-gray-400 uppercase font-bold tracking-wider truncate leading-tight w-full`}>{title}</div>
+      <div className="flex-1 flex flex-col justify-center">
+        <div className={`${isLg ? 'text-2xl md:text-3xl' : 'text-xs md:text-xl'} font-bold ${color} leading-tight`}>{value}</div>
+        {detail && <div className={`${isLg ? 'text-[10px] mt-1' : 'text-[7px] md:text-[10px] mt-0 md:mt-0.5'} text-gray-400 font-medium truncate w-full`}>{detail}</div>}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface TurnoBarProps {
   label: string;

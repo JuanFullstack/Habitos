@@ -212,18 +212,12 @@ export const useBienestarData = () => {
       throw new Error("¡Conflicto de horario! Ya existe un estado registrado en ese rango.");
     }
 
-    const toPct = (val: number) => Math.round((val / 5) * 100);
     const newEstado: IStatePoint = {
       id: editingId || Date.now(),
       t: inicio, fin: fin,
       v: parseInt(form.energia.toString()),
       contexto: form.contexto,
-      ...form.variables,
-      Ri: toPct(form.variables.Ri || 0),
-      Voluntad: toPct(form.variables.Voluntad || 0),
-      Distracción: toPct(form.variables.Distracción || 0),
-      Horus: toPct(form.variables.Horus || 0),
-      Energía: toPct(form.variables.Energía || 0)
+      ...form.variables, // Spread directly as keys match (Ri, Voluntad, etc.) and are 0-100
     };
 
     const targetDate = timeRange === 'DÍA' ? currentDate : getTodayStr();
