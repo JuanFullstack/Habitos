@@ -89,28 +89,40 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
             }
 
         } else if (isOpen) {
-            // CREATE MODE (Existing Logic)
-            const getEnd = (list: any[]) => {
-                if (!list || list.length === 0) return 0;
-                const last = list[list.length - 1];
-                let endTime = last.fin;
-                if (endTime === undefined || endTime === null) {
-                    endTime = last.t + 1;
-                }
-                return parseFloat(endTime);
-            };
-            const t1 = getEnd(currentData.actividades);
-            const t2 = getEnd(currentData.estados);
-            const t3 = getEnd(currentData.eventos);
-            const max = Math.max(t1, t2, t3);
-            setBaseTime(max > 0 ? max : (currentData.config?.horaArranque || 7.0));
-            // Reset Forms
-            setStForm(prev => ({ ...prev, preset: '', contexto: '' }));
-            const vars: any = {};
-            VARIABLES_EMOCIONALES.forEach(v => vars[v] = 0);
-            setStForm(prev => ({ ...prev, variables: vars }));
+            // CREATE MODE - Context Sensitive based on Active Tab
+            const config = currentData.config || {};
+            const arranque = config.horaArranque || 7.0;
+            let newTime = arranque;
+
+            // Logica por Pestaña
+            if (activeTab === 'actividad') {
+                const sorted = [...currentData.actividades].sort((a, b) => a.inicio - b.inicio);
+                const last = sorted[sorted.length - 1];
+                if (last) newTime = parseFloat(last.fin);
+            } else if (activeTab === 'estado') {
+                // Estado independiente de actividad, pero depende de estados previos
+                const sorted = [...currentData.estados].sort((a, b) => a.t - b.t);
+                const last = sorted[sorted.length - 1];
+                if (last) newTime = parseFloat(last.fin || (last.t + 1));
+            } else if (activeTab === 'accion') {
+                // Acción afectada por actividad
+                const sortedActs = [...currentData.actividades].sort((a, b) => a.inicio - b.inicio);
+                const lastAct = sortedActs[sortedActs.length - 1];
+
+                const sortedEvts = [...currentData.eventos].sort((a, b) => a.t - b.t);
+                const lastEvt = sortedEvts[sortedEvts.length - 1];
+
+                const tAct = lastAct ? parseFloat(lastAct.fin) : arranque;
+                const tEvt = lastEvt ? (lastEvt.fin || lastEvt.t) : arranque;
+                newTime = Math.max(tAct, tEvt);
+            }
+
+            setBaseTime(newTime > 0 ? newTime : arranque);
+
+            // Optional: Reset forms on tab switch if needed, but keeping state might be desired.
+            // setStForm(prev => ({ ...prev, preset: '', contexto: '' }));
         }
-    }, [isOpen, editData, currentData]);
+    }, [isOpen, editData, currentData, activeTab]);
 
     useEffect(() => {
         const saved = localStorage.getItem('customStatePresets');
@@ -230,7 +242,32 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
             if (editData) {
                 onClose();
             } else {
-                setBaseTime(prev => prev + duration);
+                // Smart Jump: Check if 'endTime' overlaps with an existing state
+                // If I just added 13:00-15:00. Next is 15:00.
+                // If there is a state at 15:00 (e.g. Meditation), jump over it.
+                let nextTime = baseTime + duration;
+
+                // We need the latest data including what we just added? 
+                // 'currentData' might not be updated yet in this render cycle.
+                // But we know 'endTime'.
+                // We check against 'currentData.estados' (which has old data + maybe the one we just added? No, handlers update state asynchronously usually).
+                // Actually, 'addState' updates 'currentData' via 'updateDayData'.
+                // React state updates might be batched.
+                // However, likely the 'Meditation' state is ALREADY in 'currentData.estados'.
+
+                const findOverlap = (t: number) => {
+                    // Find state starting at 't'
+                    return currentData.estados.find(s => Math.abs(s.t - t) < 0.01);
+                };
+
+                let overlap = findOverlap(nextTime);
+                while (overlap) {
+                    const opEnd = parseFloat(overlap.fin || (overlap.t + 1));
+                    nextTime = opEnd;
+                    overlap = findOverlap(nextTime);
+                }
+
+                setBaseTime(nextTime);
                 setDuration(1.0);
                 setSelectedPreset(null);
                 setStForm(prev => ({ ...prev, preset: '', contexto: '' }));
@@ -248,6 +285,39 @@ export const MasterModal: React.FC<MasterModalProps> = ({ isOpen, onClose, curre
                 fin: endTime,
                 descripcion: actionForm.desc
             }, editData?.type === 'accion' ? editData.data.id : null);
+
+            // MACRO: Meditación / Reflexión creates Activity too
+            const isMed = actionForm.label.includes('Meditación');
+            const isRef = actionForm.label === 'Reflexión';
+
+            if (!editData && (isMed || isRef)) {
+                const dur = actionForm.label.includes('15') ? 0.25 : actionForm.label.includes('30') ? 0.5 : 1.0;
+                // Add Activity: General / Meditando or Reflexion
+                const typeVal = isMed ? 'meditando' : 'reflexion';
+                const labelVal = isMed ? 'Meditando' : 'Reflexión';
+
+                handlers.addActivity({
+                    categoria: 'general',
+                    tipo: typeVal,
+                    label: labelVal,
+                    desc: actionForm.desc || (isMed ? 'Meditación' : 'Reflexión del día'),
+                    isFlow: isMed, // "muestra estado flujo"
+                    color: 'bg-gray-100 text-gray-800',
+                    inicio: baseTime.toFixed(1),
+                    fin: (baseTime + dur).toFixed(1)
+                }, null);
+
+                // Add State: Flujo (only for Meditation)
+                if (isMed) {
+                    handlers.addState({
+                        preset: 'Flujo',
+                        energia: 100, // Flujo usually High
+                        inicio: baseTime.toFixed(1),
+                        fin: (baseTime + dur).toFixed(1),
+                        variables: { Voluntad: 100, Vision: 100, Horus: 100, NC: 100 } // approximate defaults
+                    }, null);
+                }
+            }
 
             if (editData) {
                 setActionForm(prev => ({ ...prev, label: '', icon: '', desc: '' }));
