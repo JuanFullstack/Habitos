@@ -457,6 +457,13 @@ export default function App() {
               <p><b>Autenticado:</b> {pbStatus.isAuthenticated ? `✅ (${pbStatus.authMethod})` : '❌ No'}</p>
               <p><b>Colección:</b> {pbStatus.collectionReady ? '✅ Lista' : '❌ No disponible'}</p>
               <p><b>Sync:</b> {syncStatus} {syncError && `(${syncError})`}</p>
+              <p className="border-t pt-2 mt-2"><b>📊 Datos Cargados:</b></p>
+              <p><b>Días en DB:</b> {Object.keys(db).length}</p>
+              <p><b>Hoy ({new Date().toISOString().slice(0, 10)}):</b></p>
+              <p className="pl-2">Actividades: {currentData.actividades?.length || 0}</p>
+              <p className="pl-2">Estados: {currentData.estados?.length || 0}</p>
+              <p className="pl-2">Eventos: {currentData.eventos?.length || 0}</p>
+              <p><b>TimeRange:</b> {timeRange}</p>
               {pbStatus.lastError && <p className="text-red-600 break-all"><b>Error:</b> {pbStatus.lastError}</p>}
               {debugMsg && <p className="text-blue-600 font-bold break-all">{debugMsg}</p>}
             </div>
