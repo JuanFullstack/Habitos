@@ -17,11 +17,10 @@ export const COLLECTIONS = {
 let _initPromise: Promise<void> | null = null;
 
 export const ensurePBReady = async (): Promise<void> => {
-    // CRITICAL: Always check if we are authenticated as Admin before proceeding
+    // CRITICAL: Always check if we are authenticated before proceeding
     if (PB_EMAIL && PB_PASS) {
-        if (!pb.authStore.isValid || !pb.authStore.isAdmin) {
+        if (!pb.authStore.isValid) {
             console.log("[PB] 🔄 Auth invalid/expired, re-authenticating...");
-            // Force re-init (bypass singleton promise if auth is lost)
             _initPromise = _initPB();
             return _initPromise;
         }
@@ -40,13 +39,12 @@ async function _initPB() {
     // 1. Auth as Admin (if credentials available)
     if (PB_EMAIL && PB_PASS) {
         try {
-            // Clear previous potential bad state
             pb.authStore.clear();
-            await pb.admins.authWithPassword(PB_EMAIL, PB_PASS);
+            // SDK v0.21+: use _superusers collection instead of deprecated pb.admins
+            await pb.collection('_superusers').authWithPassword(PB_EMAIL, PB_PASS);
             console.log("[PB] ✅ Admin auth OK");
         } catch (e: any) {
             console.error("[PB] ❌ Admin auth failed:", e.message);
-            // Don't throw here, allowing app to try public access if configured
         }
     }
 
