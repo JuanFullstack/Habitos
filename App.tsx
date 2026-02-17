@@ -4,6 +4,7 @@ import { CATEGORIAS_ACTIVIDAD, VARIABLES_EMOCIONALES, TIME_RANGES } from './cons
 import { calculateMetrics, formatTime } from './utils/calculations';
 import { useBienestarData } from './hooks/useBienestarData';
 import { IActivity, IStatePoint, TimeRange, IDayData } from './types';
+import { forceReauth, pbStatus } from './lib/pocketbase';
 
 // Components
 import { Header } from './components/Header';
@@ -51,6 +52,8 @@ export default function App() {
   const [showMasterModal, setShowMasterModal] = useState(false);
   const [showDBSetup, setShowDBSetup] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugMsg, setDebugMsg] = useState('');
 
   // Form State
   const [formActividad, setFormActividad] = useState({ categoria: '', tipo: '', desc: '', inicio: '', fin: '', isFlow: false });
@@ -434,6 +437,45 @@ export default function App() {
           ))}
         </div>
       </nav>
+
+      {/* --- FLOATING DEBUG BUTTON (Mobile) --- */}
+      <button
+        onClick={() => setShowDebug(true)}
+        className={`fixed bottom-20 right-3 z-[60] md:hidden w-10 h-10 rounded-full flex items-center justify-center text-white text-lg shadow-lg ${syncStatus === 'error' ? 'bg-red-500 animate-pulse' : syncStatus === 'synced' ? 'bg-green-500' : 'bg-gray-700'
+          }`}
+      >
+        {syncStatus === 'error' ? '⚠️' : syncStatus === 'synced' ? '✓' : '🔌'}
+      </button>
+
+      {showDebug && (
+        <div className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4" onClick={() => setShowDebug(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-3 text-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="font-black text-lg">🔌 Estado de Conexión</h3>
+            <div className="space-y-2 text-xs bg-gray-50 p-3 rounded-xl font-mono">
+              <p><b>URL:</b> {pbStatus.url}</p>
+              <p><b>Credenciales:</b> {pbStatus.hasCredentials ? '✅ Sí' : '❌ No'}</p>
+              <p><b>Autenticado:</b> {pbStatus.isAuthenticated ? `✅ (${pbStatus.authMethod})` : '❌ No'}</p>
+              <p><b>Colección:</b> {pbStatus.collectionReady ? '✅ Lista' : '❌ No disponible'}</p>
+              <p><b>Sync:</b> {syncStatus} {syncError && `(${syncError})`}</p>
+              {pbStatus.lastError && <p className="text-red-600 break-all"><b>Error:</b> {pbStatus.lastError}</p>}
+              {debugMsg && <p className="text-blue-600 font-bold break-all">{debugMsg}</p>}
+            </div>
+            <button
+              onClick={async () => {
+                setDebugMsg('Reconectando...');
+                const result = await forceReauth();
+                setDebugMsg(result);
+              }}
+              className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all"
+            >
+              🔄 Reconectar
+            </button>
+            <button onClick={() => setShowDebug(false)} className="w-full py-2 bg-gray-100 text-gray-600 font-bold rounded-xl">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
