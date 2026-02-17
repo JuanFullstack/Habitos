@@ -259,6 +259,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <MetricCard title="Útil" value={metrics.utilPct + "%"} detail={`(${metrics.valUtil})`} color="text-blue-600" size="lg" />
               <MetricCard title="Justificado" value={metrics.justificadoPct + "%"} detail={`(${metrics.valJust})`} color="text-teal-600" size="lg" />
               <MetricCard title="Sin Reg." value={metrics.vacioPct + "%"} detail={`(${metrics.valVacio})`} color="text-gray-400" size="lg" />
+              <MetricCard title="Inútil" value={metrics.inutilPct + "%"} detail=">1h" color="text-red-500" size="lg" />
             </div>
 
             {/* Productivity Section */}
