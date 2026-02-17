@@ -394,6 +394,7 @@ export const useBienestarData = () => {
     timeRange,
     setTimeRange,
     isSyncing,
+    isSimulationMode,
     syncStatus,
     syncError,
     updateDayData,
@@ -406,6 +407,7 @@ export const useBienestarData = () => {
     handleSimulate,
     revertSimulation,
     handleImport,
-    toggleFlujo
+    toggleFlujo,
+    loadDataFromCloud
   };
 };

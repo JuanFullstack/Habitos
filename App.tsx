@@ -25,7 +25,8 @@ export default function App() {
   const {
     db, currentData, currentDate, setCurrentDate, timeRange, setTimeRange,
     updateDayData, addActivity, addState, addEvent, addBatch, deleteItem, resetData,
-    handleSimulate, toggleFlujo, revertSimulation, syncStatus, syncError
+    handleSimulate, toggleFlujo, revertSimulation, syncStatus, syncError,
+    isSimulationMode, loadDataFromCloud
   } = useBienestarData();
 
   // --- MOBILE DETECTION ---
@@ -457,6 +458,7 @@ export default function App() {
               <p><b>Autenticado:</b> {pbStatus.isAuthenticated ? `✅ (${pbStatus.authMethod})` : '❌ No'}</p>
               <p><b>Colección:</b> {pbStatus.collectionReady ? '✅ Lista' : '❌ No disponible'}</p>
               <p><b>Sync:</b> {syncStatus} {syncError && `(${syncError})`}</p>
+              <p className={isSimulationMode ? 'text-red-600 font-bold' : ''}><b>Simulación:</b> {isSimulationMode ? '⚠️ ACTIVA (bloquea sync!)' : '❌ Off'}</p>
               <p className="border-t pt-2 mt-2"><b>📊 Datos Cargados:</b></p>
               <p><b>Días en DB:</b> {Object.keys(db).length}</p>
               <p><b>Hoy ({new Date().toISOString().slice(0, 10)}):</b></p>
@@ -475,7 +477,32 @@ export default function App() {
               }}
               className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all"
             >
-              🔄 Reconectar
+              🔄 Reconectar Auth
+            </button>
+            <button
+              onClick={async () => {
+                setDebugMsg('Cargando datos de la nube...');
+                try {
+                  await loadDataFromCloud();
+                  setDebugMsg('✅ Datos cargados desde la nube');
+                } catch (e: any) {
+                  setDebugMsg(`❌ Error: ${e.message}`);
+                }
+              }}
+              className="w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 active:scale-95 transition-all"
+            >
+              ☁️ Forzar Carga desde Nube
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem('isSimulationMode');
+                localStorage.removeItem('bienestarDB');
+                setDebugMsg('Cache borrado. Recargando...');
+                setTimeout(() => window.location.reload(), 500);
+              }}
+              className="w-full py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 active:scale-95 transition-all"
+            >
+              💣 Borrar Caché y Recargar
             </button>
             <button onClick={() => setShowDebug(false)} className="w-full py-2 bg-gray-100 text-gray-600 font-bold rounded-xl">
               Cerrar
